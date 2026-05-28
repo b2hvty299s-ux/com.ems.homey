@@ -3,11 +3,5 @@
     "en": "EMS Dashboard",
     "nl": "EMS Dashboard"
   },
-  "height": "large",
-  "api": {
-    "getState": {
-      "method": "GET",
-      "path": "/state"
-    }
-  }
+  "height": "large"
 }

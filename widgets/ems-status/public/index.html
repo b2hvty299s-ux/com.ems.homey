@@ -78,7 +78,7 @@
 
     async function refresh() {
       try {
-        const s = await Homey.api('GET', '/state', {});
+        const s = await Homey.api('GET', '/getState', {});
         if (!s || !s.ready) return;
 
         set('mode', MODE_LABELS[s.mode] || s.mode);

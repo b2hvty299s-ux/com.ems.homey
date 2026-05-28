@@ -1,6 +1,6 @@
 {
   "id": "com.ems.homey",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "compatibility": ">=12.1.0",
   "sdk": 3,
   "brandColor": "#0d1f3c",
@@ -732,13 +732,7 @@
         "en": "EMS Status",
         "nl": "EMS Status"
       },
-      "height": "small",
-      "api": {
-        "getState": {
-          "method": "GET",
-          "path": "/state"
-        }
-      }
+      "height": "small"
     },
     "ems-chart": {
       "id": "ems-chart",
@@ -746,13 +740,7 @@
         "en": "EMS Dashboard",
         "nl": "EMS Dashboard"
       },
-      "height": "large",
-      "api": {
-        "getState": {
-          "method": "GET",
-          "path": "/state"
-        }
-      }
+      "height": "large"
     }
   },
   "api": {
