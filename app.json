@@ -1,6 +1,6 @@
 {
   "id": "com.ems.homey",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "compatibility": ">=12.0.0",
   "sdk": 3,
   "brandColor": "#0d1f3c",
@@ -727,6 +727,7 @@
   "settings": [],
   "widgets": {
     "ems-status": {
+      "id": "ems-status",
       "name": {
         "en": "EMS Status",
         "nl": "EMS Status"
@@ -740,6 +741,7 @@
       }
     },
     "ems-chart": {
+      "id": "ems-chart",
       "name": {
         "en": "EMS Dashboard",
         "nl": "EMS Dashboard"
