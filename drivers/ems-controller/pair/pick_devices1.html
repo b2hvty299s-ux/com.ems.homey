@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    var _Homey;
+    var _allDevices = [];
+    var _ready      = false;
+
+    window.onHomeyReady = function(Homey) {
+      _Homey = Homey;
+      Homey.ready();
+
+      Homey.emit('getCurrentData').then(function(d) {
+        if (d) {
+          if (d.hasBattery   != null) document.getElementById('hasBattery').checked   = !!d.hasBattery;
+          if (d.hasEv        != null) document.getElementById('hasEv').checked         = !!d.hasEv;
+          if (d.hasEvCharger != null) document.getElementById('hasEvCharger').checked  = !!d.hasEvCharger;
+          // Store saved IDs for later — populated once devices load
+          document.getElementById('batSelect').dataset.saved  = d.batteryId   || '';
+          document.getElementById('evSelect').dataset.saved   = d.evDeviceId  || '';
+          document.getElementById('charSelect').dataset.saved = d.evChargerId || '';
+          showBatFields();
+          showEvFields();
+          showChargerFields();
+        }
+        loadDevices();
+      }).catch(function() { loadDevices(); });
+    };
+
+    function loadDevices() {
+      _Homey.emit('getDevices').then(function(devices) {
+        _allDevices = devices || [];
+        populateSelect('batSelect',  _allDevices);
+        populateSelect('evSelect',   _allDevices);
+        populateSelect('charSelect', _allDevices);
+        _ready = true;
+      }).catch(function(err) {
+        console.error('[EMS] loadDevices error:', err);
+        ['batSelect','evSelect','charSelect'].forEach(function(id) {
+          document.getElementById(id).innerHTML = '<option value="">Fout bij laden</option>';
+        });
+        _ready = true;
+      });
+    }
+
+    function populateSelect(selectId, devices) {
+      var sel   = document.getElementById(selectId);
+      var saved = sel.dataset.saved || '';
+      sel.innerHTML = '<option value="">— Geen —</option>';
+      devices.forEach(function(d) {
+        var label = d.name + ' (' + ((d.driverUri || '').split(':').pop() || '') + ')';
+        var opt   = document.createElement('option');
+        opt.value       = d.id;
+        opt.textContent = label;
+        if (d.id === saved) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    function showBatFields() {
+      document.getElementById('bat-fields').style.display =
+        document.getElementById('hasBattery').checked ? 'block' : 'none';
+    }
+    function showEvFields() {
+      document.getElementById('ev-fields').style.display =
+        document.getElementById('hasEv').checked ? 'block' : 'none';
+    }
+    function showChargerFields() {
+      document.getElementById('charger-fields').style.display =
+        document.getElementById('hasEvCharger').checked ? 'block' : 'none';
+    }
+
+    function toggleBattery()  { showBatFields();     save(); }
+    function toggleEv()       { showEvFields();      save(); }
+    function toggleCharger()  { showChargerFields(); save(); }
+
+    function save() {
+      if (!_Homey || !_ready) return;
+      _Homey.emit('saveDevices1', {
+        hasBattery:   document.getElementById('hasBattery').checked,
+        batteryId:    document.getElementById('batSelect').value  || null,
+        hasEv:        document.getElementById('hasEv').checked,
+        evDeviceId:   document.getElementById('evSelect').value   || null,
+        hasEvCharger: document.getElementById('hasEvCharger').checked,
+        evChargerId:  document.getElementById('charSelect').value || null,
+      }).catch(function() {});
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f8f9fa; color: #202124; padding: 20px; }
+    h1   { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #5f6368; margin-bottom: 18px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            border: 1px solid #e0e0e0; }
+    h2   { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+           color: #5f6368; margin-bottom: 8px; }
+    .hint { font-size: 11px; color: #5f6368; margin-bottom: 8px; line-height: 1.4; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .toggle-row input[type=checkbox] { width: auto; margin: 0; }
+    .toggle-row label { font-size: 15px; font-weight: 500; margin: 0; }
+    select { width: 100%; padding: 9px 10px; border: 1px solid #e0e0e0; border-radius: 8px;
+             font-size: 13px; background: #fff; }
+    select:focus { outline: none; border-color: #1a73e8; }
+    .nested { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f3f4; }
+    .nested .toggle-row label { font-size: 13px; font-weight: 400; }
+  </style>
+</head>
+<body>
+  <h1>Energie-apparaten</h1>
+  <p class="sub">Stap 2 van 3 — Thuisaccu en elektrische auto</p>
+
+  <!-- Battery -->
+  <div class="card">
+    <div class="toggle-row">
+      <input type="checkbox" id="hasBattery" onchange="toggleBattery()" />
+      <label for="hasBattery">Ik heb een thuisaccu</label>
+    </div>
+    <div id="bat-fields" style="display:none">
+      <h2>Accu apparaat</h2>
+      <p class="hint">Selecteer je thuisaccu (bijv. Marstek, SolarEdge, Huawei, Sonnen).</p>
+      <select id="batSelect" onchange="save()">
+        <option value="">Apparaten laden...</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- EV car -->
+  <div class="card">
+    <div class="toggle-row">
+      <input type="checkbox" id="hasEv" onchange="toggleEv()" />
+      <label for="hasEv">Ik heb een elektrische auto</label>
+    </div>
+    <div id="ev-fields" style="display:none">
+      <h2>Auto apparaat</h2>
+      <p class="hint">Selecteer je EV (bijv. Tesla, Volkswagen, Hyundai).</p>
+      <select id="evSelect" onchange="save()">
+        <option value="">Apparaten laden...</option>
+      </select>
+
+      <!-- Optional charger -->
+      <div class="nested">
+        <div class="toggle-row">
+          <input type="checkbox" id="hasEvCharger" onchange="toggleCharger()" />
+          <label for="hasEvCharger">Ik heb ook een aparte laadpaal</label>
+        </div>
+        <div id="charger-fields" style="display:none">
+          <h2>Laadpaal apparaat</h2>
+          <p class="hint">Selecteer je laadpaal (bijv. Easee, Zaptec, Tesla Wall Connector).</p>
+          <select id="charSelect" onchange="save()">
+            <option value="">Apparaten laden...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

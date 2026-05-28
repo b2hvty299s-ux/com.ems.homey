@@ -1,0 +1,751 @@
+{
+  "id": "com.ems.homey",
+  "version": "1.0.3",
+  "compatibility": ">=12.0.0",
+  "sdk": 3,
+  "brandColor": "#0d1f3c",
+  "name": {
+    "en": "HEMS (Homey Energy Management System)",
+    "nl": "HEMS (Homey Energy Management System)"
+  },
+  "description": {
+    "en": "Smart EMS for solar, battery, EV and heat pumps",
+    "nl": "Slim EMS voor zonnepanelen, batterij, laadpaal en warmtepompen"
+  },
+  "tags": {
+    "en": [
+      "energy",
+      "solar",
+      "battery",
+      "ev",
+      "heatpump",
+      "ems"
+    ],
+    "nl": [
+      "energie",
+      "zonne",
+      "batterij",
+      "laadpaal",
+      "warmtepomp",
+      "ems"
+    ]
+  },
+  "category": [
+    "energy"
+  ],
+  "permissions": [
+    "homey:manager:api"
+  ],
+  "author": {
+    "name": "Your Name",
+    "email": "you@example.com"
+  },
+  "bugs": {
+    "url": "https://github.com/yourname/com.ems.homey/issues"
+  },
+  "source": "https://github.com/yourname/com.ems.homey",
+  "homepage": "https://github.com/yourname/com.ems.homey",
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "flow": {
+    "triggers": [
+      {
+        "id": "ems_mode_changed",
+        "title": {
+          "en": "EMS mode changed",
+          "nl": "EMS modus gewijzigd"
+        },
+        "hint": {
+          "en": "Triggers when the EMS switches to a different operating mode.",
+          "nl": "Triggert als de EMS naar een andere modus schakelt."
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            }
+          }
+        ]
+      },
+      {
+        "id": "prio1_not_feasible",
+        "title": {
+          "en": "Priority 1 not fully achievable tomorrow",
+          "nl": "Prioriteit 1 morgen niet haalbaar"
+        },
+        "hint": {
+          "en": "Triggers when the forecast shows insufficient solar energy to cover all priority 1 loads.",
+          "nl": "Triggert als de voorspelling te weinig zonne-energie toont voor alle prioriteit 1 verbruikers."
+        }
+      },
+      {
+        "id": "ev_ready_for_departure",
+        "title": {
+          "en": "EV ready for departure",
+          "nl": "EV klaar voor vertrek"
+        },
+        "hint": {
+          "en": "Triggers when the EV has reached the target SoC for a planned trip.",
+          "nl": "Triggert als de EV het gewenste laadniveau heeft bereikt voor een geplande rit."
+        },
+        "tokens": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "SoC (%)",
+              "nl": "SoC (%)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "battery_below_minimum",
+        "title": {
+          "en": "Battery below minimum SoC",
+          "nl": "Batterij onder minimum SoC"
+        },
+        "hint": {
+          "en": "Triggers when the battery drops below the configured minimum state of charge.",
+          "nl": "Triggert als de batterij onder het ingestelde minimum laadniveau zakt."
+        },
+        "tokens": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "SoC (%)",
+              "nl": "SoC (%)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "dump_load_activated",
+        "title": {
+          "en": "Dump load activated",
+          "nl": "Dumplast geactiveerd"
+        },
+        "hint": {
+          "en": "Triggers when all priority 1 and 2 devices are satisfied and surplus energy is available.",
+          "nl": "Triggert als alle prioriteit 1 en 2 verbruikers voldaan zijn en er nog overschot is."
+        }
+      },
+      {
+        "id": "dump_load_deactivated",
+        "title": {
+          "en": "Dump load deactivated",
+          "nl": "Dumplast gedeactiveerd"
+        },
+        "hint": {
+          "en": "Triggers when the solar surplus drops and dump loads are turned off.",
+          "nl": "Triggert als het zonne-overschot daalt en de dumplast wordt uitgeschakeld."
+        }
+      },
+      {
+        "id": "ev_set_charge_current",
+        "title": {
+          "en": "EMS wants to set EV charge current",
+          "nl": "EMS wil EV laadstroom instellen"
+        },
+        "hint": {
+          "en": "Fires every time the EMS calculates a new target charge current. Connect this to the 'Set charge current' action of your EV app.",
+          "nl": "Triggert elke keer als de EMS een nieuwe laadstroom berekent. Koppel dit aan de 'Stel laadstroom in'-actie van je EV app."
+        },
+        "tokens": [
+          {
+            "name": "current",
+            "type": "number",
+            "title": {
+              "en": "Current (A)",
+              "nl": "Laadstroom (A)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ev_set_charging_on",
+        "title": {
+          "en": "EMS wants to start or stop EV charging",
+          "nl": "EMS wil EV laden starten of stoppen"
+        },
+        "hint": {
+          "en": "Fires when the EMS starts or stops charging. Connect to your EV app's start/stop action.",
+          "nl": "Triggert als de EMS het laden start of stopt. Koppel aan de start/stop-actie van je EV app."
+        },
+        "tokens": [
+          {
+            "name": "enabled",
+            "type": "boolean",
+            "title": {
+              "en": "Charging on",
+              "nl": "Laden aan"
+            }
+          }
+        ]
+      },
+      {
+        "id": "heatpump_mode_switched",
+        "title": {
+          "en": "Heat pump switched mode",
+          "nl": "Warmtepomp heeft modus gewisseld"
+        },
+        "hint": {
+          "en": "Triggers once per day when the EMS switches the heat pump between heating and cooling based on the weather forecast.",
+          "nl": "Triggert eenmaal per dag als de EMS de warmtepomp omschakelt tussen verwarmen en koelen op basis van de weersvoorspelling."
+        },
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode (heating/cooling)",
+              "nl": "Modus (verwarmen/koelen)"
+            }
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "id": "ems_mode_is",
+        "title": {
+          "en": "EMS mode is !{{|not}}",
+          "nl": "EMS modus is !{{|niet}}"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "auto",
+                "label": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "solar_surplus",
+                "label": {
+                  "en": "Solar Surplus",
+                  "nl": "Zonne-overschot"
+                }
+              },
+              {
+                "id": "battery_charge",
+                "label": {
+                  "en": "Charge Battery",
+                  "nl": "Batterij laden"
+                }
+              },
+              {
+                "id": "battery_discharge",
+                "label": {
+                  "en": "Discharge Battery",
+                  "nl": "Batterij ontladen"
+                }
+              },
+              {
+                "id": "grid_import",
+                "label": {
+                  "en": "Grid Import",
+                  "nl": "Netimport"
+                }
+              },
+              {
+                "id": "idle",
+                "label": {
+                  "en": "Idle",
+                  "nl": "Inactief"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "EMS mode is [[mode]]",
+          "nl": "EMS modus is [[mode]]"
+        }
+      },
+      {
+        "id": "battery_soc_above",
+        "title": {
+          "en": "Battery SoC is !{{above|below}} threshold",
+          "nl": "Batterij SoC is !{{boven|onder}} drempel"
+        },
+        "args": [
+          {
+            "name": "threshold",
+            "type": "number",
+            "title": {
+              "en": "Threshold (%)",
+              "nl": "Drempel (%)"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Battery SoC is above [[threshold]]%",
+          "nl": "Batterij SoC is boven [[threshold]]%"
+        }
+      },
+      {
+        "id": "trip_planned_today",
+        "title": {
+          "en": "A trip is !{{planned|not planned}} today",
+          "nl": "Er is !{{een rit gepland|geen rit gepland}} vandaag"
+        }
+      },
+      {
+        "id": "heatpump_in_mode",
+        "title": {
+          "en": "Heat pump is !{{in|not in}} mode",
+          "nl": "Warmtepomp is !{{in|niet in}} modus"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "heating",
+                "label": {
+                  "en": "Heating",
+                  "nl": "Verwarmen"
+                }
+              },
+              {
+                "id": "cooling",
+                "label": {
+                  "en": "Cooling",
+                  "nl": "Koelen"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Heat pump is in [[mode]] mode",
+          "nl": "Warmtepomp is in [[mode]] modus"
+        }
+      },
+      {
+        "id": "solar_producing",
+        "title": {
+          "en": "Solar is !{{producing|not producing}}",
+          "nl": "Zonnepanelen !{{produceren|produceren niet}}"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "id": "set_ems_mode",
+        "title": {
+          "en": "Set EMS mode",
+          "nl": "Stel EMS modus in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Mode",
+              "nl": "Modus"
+            },
+            "values": [
+              {
+                "id": "auto",
+                "label": {
+                  "en": "Auto",
+                  "nl": "Automatisch"
+                }
+              },
+              {
+                "id": "battery_charge",
+                "label": {
+                  "en": "Charge Battery",
+                  "nl": "Batterij laden"
+                }
+              },
+              {
+                "id": "battery_discharge",
+                "label": {
+                  "en": "Discharge Battery",
+                  "nl": "Batterij ontladen"
+                }
+              },
+              {
+                "id": "idle",
+                "label": {
+                  "en": "Idle",
+                  "nl": "Inactief"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EMS mode to [[mode]]",
+          "nl": "Stel EMS modus in op [[mode]]"
+        }
+      },
+      {
+        "id": "plan_ev_trip",
+        "title": {
+          "en": "Plan EV trip",
+          "nl": "Plan EV rit"
+        },
+        "titleFormatted": {
+          "en": "Plan EV trip: depart [[departure_time]] at [[target_soc]]%",
+          "nl": "Plan EV rit: vertrek [[departure_time]] op [[target_soc]]%"
+        },
+        "hint": {
+          "en": "Use this action in a Shortcut or Flow to schedule an EV charging session before departure.",
+          "nl": "Gebruik deze actie in een Shortcut of Flow om een laadsessie voor vertrek in te plannen."
+        },
+        "args": [
+          {
+            "name": "departure_time",
+            "type": "time",
+            "title": {
+              "en": "Departure time",
+              "nl": "Vertrektijd"
+            }
+          },
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Target SoC (%)",
+              "nl": "Gewenste SoC (%)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "recalculate_plan",
+        "title": {
+          "en": "Recalculate day plan now",
+          "nl": "Herbereken dagplan nu"
+        },
+        "hint": {
+          "en": "Forces the EMS to recalculate tomorrow's energy plan immediately.",
+          "nl": "Dwingt de EMS het energieplan voor morgen direct opnieuw te berekenen."
+        }
+      },
+      {
+        "id": "set_ev_charge_profile",
+        "title": {
+          "en": "Set EV charge profile",
+          "nl": "Stel EV laadprofiel in"
+        },
+        "args": [
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": {
+              "en": "Profile",
+              "nl": "Profiel"
+            },
+            "values": [
+              {
+                "id": "solar_only",
+                "label": {
+                  "en": "Solar only",
+                  "nl": "Alleen zon"
+                }
+              },
+              {
+                "id": "solar_and_grid",
+                "label": {
+                  "en": "Solar + grid",
+                  "nl": "Zon + net"
+                }
+              },
+              {
+                "id": "fixed",
+                "label": {
+                  "en": "Fixed current",
+                  "nl": "Vaste stroom"
+                }
+              },
+              {
+                "id": "fast_charge",
+                "label": {
+                  "en": "Fast charge",
+                  "nl": "Snel laden"
+                }
+              },
+              {
+                "id": "off",
+                "label": {
+                  "en": "Off",
+                  "nl": "Uit"
+                }
+              }
+            ]
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV charge profile to [[mode]]",
+          "nl": "Stel EV laadprofiel in op [[mode]]"
+        }
+      },
+      {
+        "id": "set_ev_fixed_current",
+        "title": {
+          "en": "Set EV fixed charge current",
+          "nl": "Stel vaste laadstroom EV in"
+        },
+        "args": [
+          {
+            "name": "current_a",
+            "type": "number",
+            "title": {
+              "en": "Current (A)",
+              "nl": "Stroom (A)"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV fixed current to [[current_a]]A",
+          "nl": "Stel vaste laadstroom in op [[current_a]]A"
+        }
+      },
+      {
+        "id": "set_ev_max_current",
+        "title": {
+          "en": "Set EV maximum charge current",
+          "nl": "Stel maximale laadstroom EV in"
+        },
+        "args": [
+          {
+            "name": "current_a",
+            "type": "number",
+            "title": {
+              "en": "Max current (A)",
+              "nl": "Max stroom (A)"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set EV max current to [[current_a]]A",
+          "nl": "Stel maximale laadstroom in op [[current_a]]A"
+        }
+      },
+      {
+        "id": "set_battery_target_soc",
+        "title": {
+          "en": "Set battery target SoC",
+          "nl": "Stel doel-SoC batterij in"
+        },
+        "args": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "Target SoC (%)",
+              "nl": "Doel SoC (%)"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set battery target SoC to [[soc]]%",
+          "nl": "Stel doel-SoC batterij in op [[soc]]%"
+        }
+      },
+      {
+        "id": "set_dump_load",
+        "title": {
+          "en": "Enable or disable dump load",
+          "nl": "Dumplast in- of uitschakelen"
+        },
+        "args": [
+          {
+            "name": "enabled",
+            "type": "checkbox",
+            "title": {
+              "en": "Enabled",
+              "nl": "Ingeschakeld"
+            }
+          }
+        ],
+        "titleFormatted": {
+          "en": "Set dump load to [[enabled]]",
+          "nl": "Dumplast instellen op [[enabled]]"
+        }
+      }
+    ]
+  },
+  "drivers": [
+    {
+      "id": "ems-controller",
+      "name": {
+        "en": "EMS Controller",
+        "nl": "EMS Controller"
+      },
+      "class": "other",
+      "capabilities": [
+        "measure_power.pv",
+        "measure_power.pv_l1",
+        "measure_power.pv_l2",
+        "measure_power.pv_l3",
+        "measure_power.grid",
+        "measure_power.grid_l1",
+        "measure_power.grid_l2",
+        "measure_power.grid_l3",
+        "measure_battery",
+        "measure_power.ev",
+        "ems_status",
+        "ems_mode"
+      ],
+      "capabilitiesOptions": {
+        "measure_power.pv": {
+          "title": { "en": "Solar total", "nl": "Zon totaal" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.pv_l1": {
+          "title": { "en": "Solar L1", "nl": "Zon L1" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.pv_l2": {
+          "title": { "en": "Solar L2", "nl": "Zon L2" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.pv_l3": {
+          "title": { "en": "Solar L3", "nl": "Zon L3" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.grid": {
+          "title": { "en": "Grid total", "nl": "Net totaal" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.grid_l1": {
+          "title": { "en": "Grid L1", "nl": "Net L1" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.grid_l2": {
+          "title": { "en": "Grid L2", "nl": "Net L2" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.grid_l3": {
+          "title": { "en": "Grid L3", "nl": "Net L3" },
+          "decimals": 0,
+          "insights": false
+        },
+        "measure_power.ev": {
+          "title": { "en": "EV charging", "nl": "EV laden" },
+          "decimals": 0,
+          "insights": false
+        }
+      },
+      "images": {
+        "small": "/drivers/ems-controller/assets/images/small.png",
+        "large": "/drivers/ems-controller/assets/images/large.png",
+        "xlarge": "/drivers/ems-controller/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": { "next": "add_devices" }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "settings": [
+        {
+          "id": "ems_mode",
+          "type": "dropdown",
+          "label": { "en": "EMS mode", "nl": "EMS modus" },
+          "hint": { "en": "Auto: EMS manages everything. Idle: EMS paused.", "nl": "Auto: EMS beheert alles. Inactief: EMS gepauzeerd." },
+          "value": "auto",
+          "values": [
+            { "id": "auto", "label": { "en": "Auto",  "nl": "Automatisch" } },
+            { "id": "idle", "label": { "en": "Idle",  "nl": "Inactief" } }
+          ]
+        }
+      ]
+    }
+  ],
+  "capabilities": {
+    "ems_status": {
+      "type": "string",
+      "title": { "en": "Status", "nl": "Status" },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "uiQuickAction": false,
+      "icon": "/assets/capabilities/ems_status.svg",
+      "insights": false
+    },
+    "ems_mode": {
+      "type": "string",
+      "title": { "en": "Mode", "nl": "Modus" },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "uiQuickAction": false,
+      "icon": "/assets/capabilities/ems_mode.svg",
+      "insights": false
+    }
+  },
+  "settings": [],
+  "api": {
+    "getDevices": {
+      "method": "GET",
+      "path": "/getDevices"
+    },
+    "getState": {
+      "method": "GET",
+      "path": "/getState"
+    },
+    "getPlan": {
+      "method": "GET",
+      "path": "/getPlan"
+    },
+    "saveConfig": {
+      "method": "POST",
+      "path": "/saveConfig"
+    },
+    "planTrip": {
+      "method": "POST",
+      "path": "/planTrip"
+    },
+    "recalculate": {
+      "method": "POST",
+      "path": "/recalculate"
+    },
+    "testWallConnector": {
+      "method": "POST",
+      "path": "/testWallConnector"
+    },
+    "reloadConfig": {
+      "method": "POST",
+      "path": "/reloadConfig"
+    }
+  }
+}

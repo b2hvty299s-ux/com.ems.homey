@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    var _Homey;
+    var _allDevices  = [];
+    var _savedEvId   = null;
+    var _profileMode = 'solar_only';
+
+    window.onHomeyReady = function(Homey) {
+      _Homey = Homey;
+      Homey.ready();
+
+      /* Restore any previously saved values and load devices */
+      Homey.emit('getCurrentData').then(function(d) {
+        if (d) {
+          _savedEvId = d.evDeviceId || null;
+          if (d.hasEv != null)        document.getElementById('hasEv').checked          = !!d.hasEv;
+          if (d.evCapacityKwh != null) document.getElementById('evCapacity').value       = d.evCapacityKwh;
+          if (d.evPhases != null)      document.getElementById('evPhases').value          = d.evPhases;
+          if (d.evMaxAmps != null)     document.getElementById('evMaxAmps').value         = d.evMaxAmps;
+          if (d.evDefaultSoc != null)  document.getElementById('evDefaultSoc').value      = d.evDefaultSoc;
+          if (d.evHomeWeekday)         document.getElementById('evHomeWeekday').value      = d.evHomeWeekday;
+          if (d.evHomeWeekend != null) document.getElementById('evHomeWeekend').checked    = !!d.evHomeWeekend;
+          if (d.evChargeMode) {
+            _profileMode = d.evChargeMode;
+            document.querySelectorAll('.profile-card').forEach(function(c) {
+              c.classList.toggle('active', c.dataset.mode === _profileMode);
+            });
+          }
+          toggleEv();
+        }
+        loadDevices();
+      }).catch(function() {
+        loadDevices();
+      });
+
+      /* Auto-save on every change */
+      document.querySelectorAll('input, select').forEach(function(el) {
+        el.addEventListener('change', function() { save(); });
+      });
+    };
+
+    function toggleEv() {
+      var has = document.getElementById('hasEv').checked;
+      document.getElementById('ev-fields').style.display = has ? 'block' : 'none';
+      save();
+    }
+
+    function selectProfile(el) {
+      document.querySelectorAll('.profile-card').forEach(function(c) {
+        c.classList.remove('active');
+      });
+      el.classList.add('active');
+      _profileMode = el.dataset.mode;
+      save();
+    }
+
+    function loadDevices() {
+      _Homey.emit('getDevices').then(function(devices) {
+        _allDevices = devices || [];
+        renderEvList();
+      }).catch(function() {
+        document.getElementById('evList').innerHTML = '<div class="empty">Kon apparaten niet laden</div>';
+      });
+    }
+
+    function renderEvList() {
+      var container = document.getElementById('evList');
+      var filtered  = _allDevices.filter(function(d) {
+        var caps = d.capabilities || [];
+        var uri  = (d.driverUri || '').toLowerCase();
+        return caps.indexOf('ev_target_current') !== -1 || caps.indexOf('target_current') !== -1 ||
+               uri.indexOf('easee') !== -1 || uri.indexOf('zaptec') !== -1 ||
+               uri.indexOf('tesla') !== -1 || uri.indexOf('wallbox') !== -1 ||
+               uri.indexOf('charger') !== -1 || uri.indexOf('laadpaal') !== -1;
+      });
+      /* Fall back to onoff devices if nothing specific found */
+      var list = filtered.length
+        ? filtered
+        : _allDevices.filter(function(d) {
+            return (d.capabilities || []).indexOf('onoff') !== -1;
+          }).slice(0, 15);
+
+      if (!list.length) {
+        container.innerHTML = '<div class="empty">Geen laadpalen gevonden</div>';
+        return;
+      }
+      container.innerHTML = '';
+      list.forEach(function(dev) {
+        var item = document.createElement('div');
+        item.className  = 'device-item';
+        item.dataset.id = dev.id;
+        if (dev.id === _savedEvId) item.classList.add('selected');
+        var driverName = (dev.driverUri || '').split(':').pop() || '';
+        item.innerHTML =
+          '<div class="check"></div>' +
+          '<div>' +
+            '<div class="device-name">' + dev.name + '</div>' +
+            '<div class="device-driver">' + driverName + '</div>' +
+          '</div>';
+        item.addEventListener('click', function() {
+          container.querySelectorAll('.device-item').forEach(function(i) {
+            i.classList.remove('selected');
+          });
+          item.classList.toggle('selected');
+          save();
+        });
+        container.appendChild(item);
+      });
+    }
+
+    function save() {
+      if (!_Homey) return;
+      var hasEv    = document.getElementById('hasEv').checked;
+      var selected = Array.from(document.querySelectorAll('#evList .device-item.selected'))
+                       .map(function(e) { return e.dataset.id; });
+      _Homey.emit('saveEv', {
+        hasEv:         hasEv,
+        evDeviceId:    selected[0] || null,
+        evCapacityKwh: parseFloat(document.getElementById('evCapacity').value)   || 75,
+        evPhases:      parseInt(document.getElementById('evPhases').value)        || 3,
+        evMaxAmps:     parseInt(document.getElementById('evMaxAmps').value)       || 16,
+        evDefaultSoc:  parseInt(document.getElementById('evDefaultSoc').value)    || 80,
+        evChargeMode:  _profileMode,
+        evHomeWeekday: document.getElementById('evHomeWeekday').value,
+        evHomeWeekend: document.getElementById('evHomeWeekend').checked,
+      }).catch(function() {});
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f8f9fa; color: #202124; padding: 20px; }
+    h1  { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #5f6368; margin-bottom: 18px; }
+    .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px;
+            border: 1px solid #e0e0e0; }
+    h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+         color: #5f6368; margin-bottom: 8px; }
+    .hint { font-size: 11px; color: #5f6368; margin-bottom: 8px; }
+    .device-list { border: 1px solid #e0e0e0; border-radius: 8px; max-height: 160px; overflow-y: auto; }
+    .device-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+                   border-bottom: 1px solid #f1f3f4; cursor: pointer; transition: background .1s; }
+    .device-item:last-child { border-bottom: none; }
+    .device-item:hover { background: #f8f9fa; }
+    .device-item.selected { background: #e8f0fe; }
+    .check { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #ccc;
+             flex-shrink: 0; transition: all .15s; }
+    .device-item.selected .check { background: #1a73e8; border-color: #1a73e8; }
+    .device-name   { font-size: 13px; font-weight: 500; }
+    .device-driver { font-size: 11px; color: #5f6368; }
+    .empty  { padding: 12px; color: #5f6368; font-size: 12px; text-align: center; }
+    .loading { padding: 12px; color: #5f6368; font-size: 13px; text-align: center; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    input, select { width: 100%; padding: 9px 10px; border: 1px solid #e0e0e0;
+                    border-radius: 8px; font-size: 13px; background: #fff; margin-bottom: 8px; }
+    input:focus, select:focus { outline: none; border-color: #1a73e8; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { margin-bottom: 2px; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .toggle-row input[type=checkbox] { width: auto; margin: 0; }
+    .toggle-row label { margin: 0; font-size: 15px; font-weight: 500; }
+    #ev-fields { display: none; }
+    .profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+    .profile-card { border: 2px solid #e0e0e0; border-radius: 8px; padding: 8px 4px;
+                    text-align: center; cursor: pointer; transition: all .15s; }
+    .profile-card:hover { border-color: #aaa; }
+    .profile-card.active { border-color: #1a73e8; background: #e8f0fe; }
+    .profile-card .p-icon  { font-size: 18px; margin-bottom: 2px; }
+    .profile-card .p-label { font-size: 11px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>🚗 Laadpaal</h1>
+  <p class="sub">Stap 4 van 4 — Optioneel: EV-laadpaal instellen</p>
+
+  <div class="card">
+    <div class="toggle-row">
+      <input type="checkbox" id="hasEv" onchange="toggleEv()" />
+      <label for="hasEv">Ik heb een EV-laadpaal</label>
+    </div>
+
+    <div id="ev-fields">
+      <h2>Laadpaal apparaat</h2>
+      <p class="hint">Selecteer je laadpaal uit Homey (bijv. Easee, Zaptec, Tesla Wall Connector).</p>
+      <div class="device-list" id="evList">
+        <div class="loading">Apparaten laden...</div>
+      </div>
+
+      <div style="margin-top:14px">
+        <h2>Voertuig</h2>
+        <div class="row2">
+          <div class="field">
+            <label>Batterijcapaciteit (kWh)</label>
+            <input type="number" id="evCapacity" value="75" min="10" max="200" />
+          </div>
+          <div class="field">
+            <label>Laadpaal fasen</label>
+            <select id="evPhases">
+              <option value="1">1 fase</option>
+              <option value="3" selected>3 fasen</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Max laadstroom (A)</label>
+            <input type="number" id="evMaxAmps" value="16" min="6" max="32" />
+          </div>
+          <div class="field">
+            <label>Standaard doel SoC (%)</label>
+            <input type="number" id="evDefaultSoc" value="80" min="20" max="100" />
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:4px">
+        <h2>Laadprofiel</h2>
+        <div class="profile-grid">
+          <div class="profile-card active" data-mode="solar_only" onclick="selectProfile(this)">
+            <div class="p-icon">☀️</div>
+            <div class="p-label">Alleen zon</div>
+          </div>
+          <div class="profile-card" data-mode="solar_and_grid" onclick="selectProfile(this)">
+            <div class="p-icon">🔌</div>
+            <div class="p-label">Zon + net</div>
+          </div>
+          <div class="profile-card" data-mode="fast_charge" onclick="selectProfile(this)">
+            <div class="p-icon">⚡</div>
+            <div class="p-label">Snel laden</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2>Aanwezigheid</h2>
+        <div class="field">
+          <label>Doordeweeks thuis vanaf</label>
+          <input type="time" id="evHomeWeekday" value="17:00" />
+        </div>
+        <div class="toggle-row" style="margin-bottom:0">
+          <input type="checkbox" id="evHomeWeekend" checked style="width:auto;margin:0" />
+          <label for="evHomeWeekend" style="font-size:13px;font-weight:400">Overdag thuis in weekend</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

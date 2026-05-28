@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    var _Homey;
+    var _ready = false;
+
+    window.onHomeyReady = function(Homey) {
+      _Homey = Homey;
+      Homey.ready();
+
+      Homey.emit('getCurrentData').then(function(d) {
+        if (d) {
+          if (d.hasHeatPump != null) document.getElementById('hasHeatPump').checked = !!d.hasHeatPump;
+          document.getElementById('hpSelect').dataset.saved = d.heatPumpId || '';
+          showHpFields();
+        }
+        loadDevices();
+      }).catch(function() { loadDevices(); });
+    };
+
+    function loadDevices() {
+      _Homey.emit('getDevices').then(function(devices) {
+        var all = devices || [];
+        var sel   = document.getElementById('hpSelect');
+        var saved = sel.dataset.saved || '';
+
+        // Filter: thermostat / heat pump candidates
+        var filtered = all.filter(function(d) {
+          var caps = d.capabilities || [];
+          var uri  = (d.driverUri || '').toLowerCase();
+          return caps.indexOf('target_temperature') !== -1 ||
+                 caps.indexOf('thermostat_mode') !== -1 ||
+                 uri.indexOf('heatpump') !== -1 || uri.indexOf('warmtepomp') !== -1 ||
+                 uri.indexOf('daikin') !== -1   || uri.indexOf('mitsubishi') !== -1 ||
+                 uri.indexOf('nibe') !== -1     || uri.indexOf('vaillant') !== -1  ||
+                 uri.indexOf('nefit') !== -1    || uri.indexOf('bosch') !== -1     ||
+                 uri.indexOf('airco') !== -1    || uri.indexOf('hvac') !== -1;
+        });
+        if (filtered.length === 0) filtered = all;  // fallback: show everything
+
+        sel.innerHTML = '<option value="">— Geen —</option>';
+        filtered.forEach(function(d) {
+          var label = d.name + ' (' + ((d.driverUri || '').split(':').pop() || '') + ')';
+          var opt   = document.createElement('option');
+          opt.value       = d.id;
+          opt.textContent = label;
+          if (d.id === saved) opt.selected = true;
+          sel.appendChild(opt);
+        });
+
+        _ready = true;
+      }).catch(function(err) {
+        console.error('[EMS] loadDevices error:', err);
+        document.getElementById('hpSelect').innerHTML = '<option value="">Fout bij laden</option>';
+        _ready = true;
+      });
+    }
+
+    function showHpFields() {
+      document.getElementById('hp-fields').style.display =
+        document.getElementById('hasHeatPump').checked ? 'block' : 'none';
+    }
+
+    function toggleHp() { showHpFields(); save(); }
+
+    function save() {
+      if (!_Homey || !_ready) return;
+      _Homey.emit('saveDevices2', {
+        hasHeatPump: document.getElementById('hasHeatPump').checked,
+        heatPumpId:  document.getElementById('hpSelect').value || null,
+      }).catch(function() {});
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f8f9fa; color: #202124; padding: 20px; }
+    h1   { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #5f6368; margin-bottom: 18px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            border: 1px solid #e0e0e0; }
+    h2   { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+           color: #5f6368; margin-bottom: 8px; }
+    .hint { font-size: 11px; color: #5f6368; margin-bottom: 8px; line-height: 1.4; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .toggle-row input[type=checkbox] { width: auto; margin: 0; }
+    .toggle-row label { font-size: 15px; font-weight: 500; margin: 0; }
+    select { width: 100%; padding: 9px 10px; border: 1px solid #e0e0e0; border-radius: 8px;
+             font-size: 13px; background: #fff; }
+    select:focus { outline: none; border-color: #1a73e8; }
+    .info-box { background: #e8f0fe; border-radius: 8px; padding: 10px 12px; font-size: 12px;
+                color: #1a56db; margin-top: 10px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <h1>Warmtepomp</h1>
+  <p class="sub">Stap 3 van 3 — Optioneel: koppel je warmtepomp</p>
+
+  <div class="card">
+    <div class="toggle-row">
+      <input type="checkbox" id="hasHeatPump" onchange="toggleHp()" />
+      <label for="hasHeatPump">Ik heb een warmtepomp</label>
+    </div>
+    <div id="hp-fields" style="display:none">
+      <h2>Warmtepomp apparaat</h2>
+      <p class="hint">Selecteer je warmtepomp of thermostaat (bijv. Daikin, Nibe, Vaillant, Nefit).</p>
+      <select id="hpSelect" onchange="save()">
+        <option value="">Apparaten laden...</option>
+      </select>
+      <div class="info-box">
+        Bij zonne-overschot verschuift de EMS de insteltemperatuur automatisch met het aantal graden dat je in de app-instellingen configureert (standaard 1°C).
+      </div>
+    </div>
+  </div>
+</body>
+</html>

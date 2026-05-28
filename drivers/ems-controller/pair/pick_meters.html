@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    var _Homey;
+
+    window.onHomeyReady = function(Homey) {
+      _Homey = Homey;
+      Homey.ready();
+
+      // Load saved selection
+      Homey.emit('getCurrentData').then(function(d) {
+        if (d) {
+          if (d.gridMeterId) document.getElementById('p1Select').dataset.saved = d.gridMeterId;
+          if (d.pvMeterIds)  document.getElementById('pvSelect').dataset.saved  = JSON.stringify(d.pvMeterIds);
+        }
+        loadDevices();
+      }).catch(function() { loadDevices(); });
+    };
+
+    function loadDevices() {
+      _Homey.emit('getDevices').then(function(devices) {
+        var powerDevices = (devices || []).filter(function(d) {
+          return (d.capabilities || []).indexOf('measure_power') !== -1;
+        });
+
+        var p1Sel  = document.getElementById('p1Select');
+        var pvSel  = document.getElementById('pvSelect');
+        var saved1 = p1Sel.dataset.saved  || null;
+        var saved2 = JSON.parse(pvSel.dataset.saved  || '[]');
+
+        // Clear loading option
+        p1Sel.innerHTML = '<option value="">— Geen —</option>';
+        pvSel.innerHTML = '';
+
+        if (powerDevices.length === 0) {
+          p1Sel.innerHTML = '<option value="">Geen apparaten gevonden</option>';
+          pvSel.innerHTML = '<option value="">Geen apparaten gevonden</option>';
+          return;
+        }
+
+        powerDevices.forEach(function(d) {
+          var label = d.name + ' (' + ((d.driverUri || '').split(':').pop() || '') + ')';
+
+          var opt1 = document.createElement('option');
+          opt1.value = d.id;
+          opt1.textContent = label;
+          if (d.id === saved1) opt1.selected = true;
+          p1Sel.appendChild(opt1);
+
+          var opt2 = document.createElement('option');
+          opt2.value = d.id;
+          opt2.textContent = label;
+          if (saved2.indexOf(d.id) !== -1) opt2.selected = true;
+          pvSel.appendChild(opt2);
+        });
+
+        document.getElementById('err').style.display = 'none';
+      }).catch(function(err) {
+        console.error('[EMS] loadDevices error:', err);
+        document.getElementById('p1Select').innerHTML = '<option value="">Fout bij laden</option>';
+        document.getElementById('pvSelect').innerHTML  = '<option value="">Fout bij laden</option>';
+      });
+    }
+
+    function save() {
+      if (!_Homey) return;
+      var p1Val = document.getElementById('p1Select').value;
+      document.getElementById('err').style.display = p1Val ? 'none' : 'block';
+      var pvOpts = document.getElementById('pvSelect').options;
+      var pvIds = [];
+      for (var i = 0; i < pvOpts.length; i++) {
+        if (pvOpts[i].selected && pvOpts[i].value) pvIds.push(pvOpts[i].value);
+      }
+      _Homey.emit('saveMeters', {
+        gridMeterId: p1Val || null,
+        pvMeterIds:  pvIds,
+      }).catch(function() {});
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f8f9fa; color: #202124; padding: 20px; }
+    h1   { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #5f6368; margin-bottom: 18px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            border: 1px solid #e0e0e0; }
+    h2   { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+           color: #5f6368; margin-bottom: 8px; }
+    .hint { font-size: 11px; color: #5f6368; margin-bottom: 8px; line-height: 1.4; }
+    select { width: 100%; padding: 9px 10px; border: 1px solid #e0e0e0; border-radius: 8px;
+             font-size: 13px; background: #fff; }
+    select:focus { outline: none; border-color: #1a73e8; }
+    select[multiple] { height: 120px; }
+    .err { color: #c5221f; font-size: 12px; margin-top: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>Meters</h1>
+  <p class="sub">Stap 1 van 3 — Kies je netmeter en zonne-meter</p>
+
+  <div class="card">
+    <h2>Netmeter (P1)</h2>
+    <p class="hint">Het apparaat dat import en export van het elektriciteitsnet meet (bijv. HomeWizard P1).</p>
+    <select id="p1Select" onchange="save()">
+      <option value="">Apparaten laden...</option>
+    </select>
+    <div class="err" id="err">Selecteer minimaal je P1 meter om verder te gaan.</div>
+  </div>
+
+  <div class="card">
+    <h2>Zonne-opwek meter (PV)</h2>
+    <p class="hint">De kWh-meter op je omvormer. Meerdere omvormers? Houd Ctrl/Cmd ingedrukt en selecteer ze allemaal.</p>
+    <select id="pvSelect" multiple onchange="save()">
+      <option value="">Apparaten laden...</option>
+    </select>
+  </div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": {
+    "en": "EMS Status",
+    "nl": "EMS Status"
+  },
+  "height": "50%",
+  "api": {
+    "getState": {
+      "method": "GET",
+      "path": "/state"
+    }
+  }
+}

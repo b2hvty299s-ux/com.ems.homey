@@ -1,0 +1,75 @@
+{
+  "ems": {
+    "mode": {
+      "auto":               "Auto",
+      "solar_surplus":      "Solar Surplus",
+      "battery_charge":     "Charging Battery",
+      "battery_discharge":  "Discharging Battery",
+      "grid_import":        "Grid Import",
+      "idle":               "Idle"
+    },
+    "heatpump": {
+      "heating": "Heating",
+      "cooling": "Cooling"
+    },
+    "ev": {
+      "profile": {
+        "solar_only":     "Solar only",
+        "solar_and_grid": "Solar + grid",
+        "fixed":          "Fixed current",
+        "fast_charge":    "Fast charge",
+        "off":            "Off"
+      }
+    }
+  },
+  "settings": {
+    "battery": {
+      "min_soc":       "Minimum SoC (%)",
+      "min_soc_hint":  "The battery will never be discharged below this level.",
+      "target_soc":    "Target SoC (%)",
+      "target_hint":   "The EMS will charge the battery up to this level using solar surplus."
+    },
+    "solar": {
+      "surplus_threshold":      "Surplus threshold (W)",
+      "surplus_threshold_hint": "Minimum solar surplus before the EMS takes action."
+    },
+    "ev": {
+      "charge_mode":       "Charge mode",
+      "fixed_current":     "Fixed charge current (A)",
+      "max_current":       "Maximum charge current (A)",
+      "min_current":       "Minimum charge current (A)",
+      "capacity":          "Battery capacity (kWh)",
+      "default_soc":       "Default target SoC (%)",
+      "phases":            "Number of phases",
+      "max_amps":          "Maximum current (A)",
+      "wall_connector_ip": "Wall Connector IP address"
+    },
+    "heatpump": {
+      "offset_step":       "Offset step (°C)",
+      "offset_step_hint":  "Temperature adjustment per surplus level.",
+      "max_offset":        "Maximum offset (°C)",
+      "night_threshold":   "Night temperature threshold (°C)",
+      "night_hint":        "Switch to cooling when night temperature exceeds this.",
+      "day_threshold":     "Day temperature threshold (°C)",
+      "day_hint":          "Switch to cooling when day temperature also exceeds this."
+    },
+    "prices": {
+      "import":    "Import price (€/kWh)",
+      "export":    "Export price (€/kWh)",
+      "contract":  "Contract type",
+      "fixed":     "Fixed tariff",
+      "dynamic":   "Dynamic (hourly prices)"
+    }
+  },
+  "notifications": {
+    "trip_planned":    "EV trip planned",
+    "ev_ready":        "EV ready for departure",
+    "prio1_warning":   "Warning: not enough solar tomorrow for all priority 1 devices",
+    "bat_low":         "Battery below minimum SoC"
+  },
+  "errors": {
+    "setup_incomplete": "Setup not complete. Open the app settings to run the setup wizard.",
+    "device_not_found": "Device not found. Please check the app settings.",
+    "wall_connector":   "Cannot reach Wall Connector. Check the IP address in settings."
+  }
+}

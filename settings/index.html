@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    var _Homey;
+
+    var NUM_KEYS = [
+      'price_import', 'price_export', 'phases', 'max_amps',
+      'pv_peak_kw', 'pv_peak_kw_l1', 'pv_peak_kw_l2', 'pv_peak_kw_l3',
+      'bat_capacity_kwh', 'bat_max_charge_w', 'bat_max_discharge_w',
+      'hp_offset_deg', 'ev_capacity_kwh', 'ev_default_soc', 'surplus_threshold',
+      'ev_max_current_a', 'ev_min_current_a', 'ev_fixed_current_a', 'ev_target_import_w',
+      'ev_peak1_start', 'ev_peak1_end', 'ev_peak2_start', 'ev_peak2_end',
+      'ev_night_start', 'ev_night_end', 'ev_bat_night_min_soc',
+    ];
+
+    var BEHAVIOR_KEYS = [
+      'contract_type', 'price_import', 'price_export',
+      'day_ahead_provider', 'day_ahead_api_key',
+      'phases', 'max_amps',
+      'pv_peak_kw', 'pv_peak_kw_l1', 'pv_peak_kw_l2', 'pv_peak_kw_l3',
+      'bat_capacity_kwh', 'bat_max_charge_w', 'bat_max_discharge_w',
+      'hp_offset_deg', 'ev_capacity_kwh', 'ev_default_soc', 'surplus_threshold',
+      'ev_charge_mode', 'ev_max_current_a', 'ev_min_current_a', 'ev_fixed_current_a', 'ev_target_import_w',
+      'ev_peak1_start', 'ev_peak1_end', 'ev_peak2_start', 'ev_peak2_end',
+      'ev_night_charge', 'ev_night_start', 'ev_night_end', 'ev_bat_night_min_soc',
+    ];
+
+    var DEVICE_BOOL_KEYS = ['hasBattery', 'hasEv', 'hasEvCharger', 'hasHeatPump', 'ev_night_charge'];
+    var DEVICE_ID_KEYS   = ['gridMeterId', 'pvMeterIds', 'batteryId', 'evDeviceId', 'wallConnectorIp', 'evChargerId', 'heatPumpId'];
+
+    window.onHomeyReady = function(Homey) {
+      _Homey = Homey;
+      Homey.ready();
+
+      // 1. Load behavior settings
+      var loads = BEHAVIOR_KEYS.map(function(key) {
+        return Homey.get(key).then(function(value) {
+          if (value == null) return;
+          var el = document.getElementById(key);
+          if (el) el.value = value;
+        });
+      });
+
+      Promise.all(loads).then(function() {
+        return Promise.all([
+          Homey.get('contract_type'),
+          Homey.get('phases'),
+          Homey.get('ev_charge_mode'),
+          Homey.get('ev_night_charge'),
+        ]);
+      }).then(function(vals) {
+        toggleDynamic(vals[0] || 'fixed');
+        togglePvPhases(vals[1] || 1);
+        toggleEvFixed(vals[2] || 'solar_only');
+        if (vals[3] != null) {
+          var cb = document.getElementById('ev_night_charge');
+          if (cb) cb.checked = !!vals[3];
+        }
+        showNightSection();
+        updatePvTotal();
+      }).catch(function(err) {
+        console.error('[EMS settings] load error:', err);
+        toggleDynamic('fixed');
+        toggleEvFixed('solar_only');
+      });
+
+      // 2. Load device dropdowns via app API
+      Homey.api('GET', '/getDevices', {}).then(function(devices) {
+        populateDropdowns(devices || []);
+        return Promise.all([
+          Homey.get('gridMeterId'),
+          Homey.get('pvMeterIds'),
+          Homey.get('hasBattery'),
+          Homey.get('batteryId'),
+          Homey.get('hasEv'),
+          Homey.get('evDeviceId'),
+          Homey.get('hasEvCharger'),
+          Homey.get('evChargerId'),
+          Homey.get('hasHeatPump'),
+          Homey.get('heatPumpId'),
+          Homey.get('wallConnectorIp'),
+        ]);
+      }).then(function(vals) {
+        if (vals[0]) document.getElementById('gridMeterId').value = vals[0];
+        if (Array.isArray(vals[1]) && vals[1].length > 0) {
+          document.getElementById('pvMeterIds').value = vals[1][0];
+        }
+        if (vals[2]  != null) document.getElementById('hasBattery').checked    = !!vals[2];
+        if (vals[3])          document.getElementById('batteryId').value        = vals[3];
+        if (vals[4]  != null) document.getElementById('hasEv').checked          = !!vals[4];
+        if (vals[5])          document.getElementById('evDeviceId').value        = vals[5];
+        if (vals[6]  != null) document.getElementById('hasEvCharger').checked   = !!vals[6];
+        if (vals[7])          document.getElementById('evChargerId').value       = vals[7];
+        if (vals[8]  != null) document.getElementById('hasHeatPump').checked    = !!vals[8];
+        if (vals[9])          document.getElementById('heatPumpId').value        = vals[9];
+        if (vals[10])         document.getElementById('wallConnectorIp').value   = vals[10];
+        showBatSection(); showEvSection(); showChargerSection(); showHpSection();
+        document.getElementById('device-loading').style.display = 'none';
+        document.getElementById('device-content').style.display = 'block';
+      }).catch(function(err) {
+        console.error('[EMS settings] device load error:', err);
+        document.getElementById('device-loading').textContent = 'Fout bij laden apparaten.';
+      });
+
+      // 3. Build hour selects and restore values
+      buildHourOptions('ev_peak1_start', 7);
+      buildHourOptions('ev_peak1_end',   9);
+      buildHourOptions('ev_peak2_start', 17);
+      buildHourOptions('ev_peak2_end',   21);
+      buildHourOptions('ev_night_start', 23);
+      buildHourOptions('ev_night_end',   7);
+
+      // 4. Load EV home day checkboxes (defaults: Za + Zo aangevinkt)
+      var EV_DAY_DEFAULTS = { sun: true, mon: false, tue: false, wed: false, thu: false, fri: false, sat: true };
+      ['sun','mon','tue','wed','thu','fri','sat'].forEach(function(d) {
+        var key = 'ev_home_' + d;
+        Homey.get(key).then(function(val) {
+          var el = document.getElementById(key);
+          if (el) el.checked = (val != null) ? !!val : EV_DAY_DEFAULTS[d];
+        });
+      });
+
+      // 5. Wire up change handlers
+      document.querySelectorAll('input, select').forEach(function(el) {
+        el.addEventListener('change', function() {
+          var isDeviceBool = DEVICE_BOOL_KEYS.indexOf(el.id) !== -1;
+          var isDeviceId   = DEVICE_ID_KEYS.indexOf(el.id) !== -1;
+
+          if (isDeviceBool || isDeviceId) {
+            if (el.id === 'hasBattery')    showBatSection();
+            if (el.id === 'hasEv')         showEvSection();
+            if (el.id === 'hasEvCharger')  showChargerSection();
+            if (el.id === 'hasHeatPump')   showHpSection();
+            if (el.id === 'ev_night_charge') {
+              showNightSection();
+              _Homey.set('ev_night_charge', el.checked);
+              return;
+            }
+            saveDeviceSettings();
+          } else {
+            // EV home day checkboxes — save boolean directly
+            if (el.id.indexOf('ev_home_') === 0) {
+              _Homey.set(el.id, el.checked).then(showSaved).catch(function(e) {
+                console.error('[EMS settings] save error:', el.id, e);
+              });
+              return;
+            }
+            saveField(el);
+            if (el.id === 'contract_type')  toggleDynamic(el.value);
+            if (el.id === 'phases')         togglePvPhases(parseInt(el.value));
+            if (el.id === 'ev_charge_mode') toggleEvFixed(el.value);
+            if (el.id === 'pv_peak_kw_l1' || el.id === 'pv_peak_kw_l2' || el.id === 'pv_peak_kw_l3') {
+              updatePvTotal();
+            }
+          }
+        });
+      });
+    };
+
+    function populateDropdowns(all) {
+      function fill(id, items, blank) {
+        var sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = blank ? '<option value="">— Geen —</option>' : '';
+        items.forEach(function(d) {
+          var driver = (d.driverUri || '').split(':').pop() || '';
+          var opt    = document.createElement('option');
+          opt.value       = d.id;
+          opt.textContent = d.name + (driver ? ' (' + driver + ')' : '');
+          sel.appendChild(opt);
+        });
+      }
+
+      // Backend already filters by capability — just show all returned devices in every dropdown.
+      // User picks the right one; capability-based pre-selection can be added later.
+      fill('gridMeterId', all, true);
+      fill('pvMeterIds',  all, false);
+      fill('batteryId',   all, true);
+      fill('evDeviceId',  all, true);
+      fill('evChargerId', all, true);
+      fill('heatPumpId',  all, true);
+    }
+
+    function saveDeviceSettings() {
+      if (!_Homey) return;
+      var pvId  = document.getElementById('pvMeterIds').value;
+      var pvIds = pvId ? [pvId] : [];
+      Promise.all([
+        _Homey.set('gridMeterId',  document.getElementById('gridMeterId').value  || null),
+        _Homey.set('pvMeterIds',   pvIds),
+        _Homey.set('hasBattery',   document.getElementById('hasBattery').checked),
+        _Homey.set('batteryId',    document.getElementById('batteryId').value    || null),
+        _Homey.set('hasEv',           document.getElementById('hasEv').checked),
+        _Homey.set('evDeviceId',      document.getElementById('evDeviceId').value      || null),
+        _Homey.set('wallConnectorIp', document.getElementById('wallConnectorIp').value.trim() || null),
+        _Homey.set('hasEvCharger',    document.getElementById('hasEvCharger').checked),
+        _Homey.set('evChargerId',     document.getElementById('evChargerId').value     || null),
+        _Homey.set('hasHeatPump',     document.getElementById('hasHeatPump').checked),
+        _Homey.set('heatPumpId',      document.getElementById('heatPumpId').value      || null),
+      ]).then(function() {
+        _Homey.api('POST', '/reloadConfig', {}).catch(function() {});
+        showSaved();
+      }).catch(function(err) {
+        console.error('[EMS settings] save device error:', err);
+      });
+    }
+
+    function saveField(el) {
+      if (!_Homey) return;
+      var key   = el.id;
+      var raw   = el.value;
+      var value = NUM_KEYS.indexOf(key) !== -1 ? parseFloat(raw) : raw;
+      if (isNaN(value)) value = raw;
+      _Homey.set(key, value).then(function() {
+        showSaved();
+      }).catch(function(err) {
+        console.error('[EMS settings] save error:', key, err);
+      });
+    }
+
+    function showBatSection()     { document.getElementById('bat-section').style.display     = document.getElementById('hasBattery').checked   ? 'block' : 'none'; }
+    function showEvSection()      { document.getElementById('ev-section').style.display      = document.getElementById('hasEv').checked         ? 'block' : 'none'; }
+    function showChargerSection() { document.getElementById('charger-section').style.display = document.getElementById('hasEvCharger').checked  ? 'block' : 'none'; }
+    function showHpSection()      { document.getElementById('hp-section').style.display      = document.getElementById('hasHeatPump').checked   ? 'block' : 'none'; }
+
+    function toggleEvFixed(mode) {
+      var row = document.getElementById('ev_fixed_row');
+      if (row) row.style.display = (mode === 'fixed') ? 'block' : 'none';
+    }
+
+    function showNightSection() {
+      var el = document.getElementById('ev_night_section');
+      var cb = document.getElementById('ev_night_charge');
+      if (el && cb) el.style.display = cb.checked ? 'block' : 'none';
+    }
+
+    function toggleDynamic(type) {
+      var isDyn = type === 'dynamic';
+      document.getElementById('fixed-fields').style.display   = isDyn ? 'none'  : 'block';
+      document.getElementById('dynamic-fields').style.display = isDyn ? 'block' : 'none';
+    }
+
+    function togglePvPhases(phases) {
+      var is3 = parseInt(phases) === 3;
+      document.getElementById('pv-single').style.display = is3 ? 'none'  : 'block';
+      document.getElementById('pv-3fase').style.display  = is3 ? 'block' : 'none';
+    }
+
+    function updatePvTotal() {
+      var l1 = parseFloat(document.getElementById('pv_peak_kw_l1').value) || 0;
+      var l2 = parseFloat(document.getElementById('pv_peak_kw_l2').value) || 0;
+      var l3 = parseFloat(document.getElementById('pv_peak_kw_l3').value) || 0;
+      document.getElementById('pv-total-label').textContent =
+        'Totaal: ' + (Math.round((l1 + l2 + l3) * 10) / 10) + ' kWp';
+    }
+
+    // Build <option> list for hour selects
+    function buildHourOptions(selectId, defaultVal) {
+      var sel = document.getElementById(selectId);
+      if (!sel) return;
+      sel.innerHTML = '';
+      for (var h = 0; h < 24; h++) {
+        var opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = (h < 10 ? '0' + h : h) + ':00';
+        if (h === defaultVal) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    function showSaved() {
+      var el = document.getElementById('saved-msg');
+      el.style.opacity = '1';
+      clearTimeout(el._t);
+      el._t = setTimeout(function() { el.style.opacity = '0'; }, 1500);
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f8f9fa; color: #202124; padding: 20px; max-width: 560px; }
+    h1   { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #5f6368; margin-bottom: 24px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 14px;
+            border: 1px solid #e0e0e0; }
+    h2   { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+           color: #5f6368; margin-bottom: 12px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    .hint { font-size: 11px; color: #5f6368; margin-bottom: 8px; line-height: 1.4; }
+    input, select { width: 100%; padding: 9px 10px; border: 1px solid #e0e0e0;
+                    border-radius: 8px; font-size: 13px; background: #fff; margin-bottom: 10px; }
+    input:focus, select:focus { outline: none; border-color: #1a73e8; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { margin-bottom: 2px; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .toggle-row input[type=checkbox] { width: auto; margin: 0; }
+    .toggle-row label { font-size: 14px; font-weight: 500; margin: 0; }
+    .sub-toggle { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; }
+    .sub-toggle input[type=checkbox] { width: auto; margin: 0; }
+    .sub-toggle label { font-size: 13px; font-weight: 400; margin: 0; }
+.loading-msg { font-size: 13px; color: #5f6368; }
+    #saved-msg { position: fixed; bottom: 20px; right: 20px; background: #1a73e8; color: #fff;
+                 padding: 8px 16px; border-radius: 8px; font-size: 13px; opacity: 0;
+                 transition: opacity .3s; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <h1>EMS Instellingen</h1>
+  <p class="sub">Configureer je slimme meters, apparaten en gedragsinstellingen.</p>
+
+  <!-- Gekoppelde apparaten -->
+  <div class="card">
+    <h2>Gekoppelde apparaten</h2>
+    <p class="hint">Koppel je Homey-apparaten aan het EMS. Wijzigingen worden direct toegepast.</p>
+
+    <span id="device-loading" class="loading-msg">Apparaten laden...</span>
+
+    <div id="device-content" style="display:none">
+
+      <label>Netmeter (P1)</label>
+      <p class="hint">Het apparaat dat import/export van het net meet (bijv. HomeWizard P1).</p>
+      <select id="gridMeterId"><option value="">— Geen —</option></select>
+
+      <label>Zonne-opwek meter (PV)</label>
+      <p class="hint">De kWh-meter op je omvormer (bijv. op de output van je Growatt).</p>
+      <select id="pvMeterIds"><option value="">— Geen —</option></select>
+
+      <div class="toggle-row" style="margin-top:4px">
+        <input type="checkbox" id="hasBattery" />
+        <label for="hasBattery">Ik heb een thuisaccu</label>
+      </div>
+      <div id="bat-section" style="display:none">
+        <label>Accu apparaat</label>
+        <select id="batteryId"><option value="">— Geen —</option></select>
+      </div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="hasEv" />
+        <label for="hasEv">Ik heb een EV (elektrische auto)</label>
+      </div>
+      <div id="ev-section" style="display:none">
+        <label>EV apparaat</label>
+        <select id="evDeviceId"><option value="">— Geen —</option></select>
+        <label style="margin-top:8px">Wall Connector IP-adres <span style="font-weight:400;font-size:12px">(optioneel, voor lokale meting)</span></label>
+        <input type="text" id="wallConnectorIp" placeholder="bijv. 192.168.1.50" style="font-family:monospace" />
+        <div class="sub-toggle">
+          <input type="checkbox" id="hasEvCharger" />
+          <label for="hasEvCharger">Ik heb ook een aparte laadpaal</label>
+        </div>
+        <div id="charger-section" style="display:none">
+          <label>Laadpaal apparaat</label>
+          <select id="evChargerId"><option value="">— Geen —</option></select>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="hasHeatPump" />
+        <label for="hasHeatPump">Ik heb een warmtepomp</label>
+      </div>
+      <div id="hp-section" style="display:none">
+        <label>Warmtepomp apparaat</label>
+        <select id="heatPumpId"><option value="">— Geen —</option></select>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Energiecontract -->
+  <div class="card">
+    <h2>Energiecontract</h2>
+    <label>Type contract</label>
+    <select id="contract_type">
+      <option value="fixed">Vast tarief</option>
+      <option value="dynamic">Dynamisch (uurprijzen)</option>
+    </select>
+    <div id="fixed-fields">
+      <div class="row2">
+        <div class="field">
+          <label>Inkoopprijs (€/kWh)</label>
+          <input type="number" id="price_import" value="0.30" step="0.01" min="0" max="2" />
+        </div>
+        <div class="field">
+          <label>Terugleverprijs (€/kWh)</label>
+          <input type="number" id="price_export" value="0.09" step="0.01" min="0" max="1" />
+        </div>
+      </div>
+    </div>
+    <div id="dynamic-fields" style="display:none">
+      <label>Provider</label>
+      <select id="day_ahead_provider">
+        <option value="entso-e">ENTSO-E (gratis)</option>
+        <option value="tibber">Tibber</option>
+      </select>
+      <label>API key</label>
+      <input type="text" id="day_ahead_api_key" placeholder="Vereist voor Tibber, leeg voor ENTSO-E" />
+    </div>
+  </div>
+
+  <!-- Netaansluiting -->
+  <div class="card">
+    <h2>Netaansluiting</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Fasen</label>
+        <select id="phases">
+          <option value="1">1 fase</option>
+          <option value="3" selected>3 fasen</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Max capaciteit (A)</label>
+        <input type="number" id="max_amps" value="25" min="10" max="80" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Zonnepanelen -->
+  <div class="card">
+    <h2>Zonnepanelen</h2>
+    <p class="hint">Vul het piekvermogen in — bij 3 fasen per fase apart.</p>
+    <div id="pv-single">
+      <label>Totaal piek vermogen (kWp)</label>
+      <input type="number" id="pv_peak_kw" value="5.0" step="0.1" min="0.5" max="100" />
+    </div>
+    <div id="pv-3fase" style="display:none">
+      <div class="row2" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="field">
+          <label>Fase L1 (kWp)</label>
+          <input type="number" id="pv_peak_kw_l1" value="0" step="0.1" min="0" max="100" />
+        </div>
+        <div class="field">
+          <label>Fase L2 (kWp)</label>
+          <input type="number" id="pv_peak_kw_l2" value="0" step="0.1" min="0" max="100" />
+        </div>
+        <div class="field">
+          <label>Fase L3 (kWp)</label>
+          <input type="number" id="pv_peak_kw_l3" value="0" step="0.1" min="0" max="100" />
+        </div>
+      </div>
+      <p class="hint" id="pv-total-label">Totaal: 0 kWp</p>
+    </div>
+  </div>
+
+  <!-- Thuisaccu -->
+  <div class="card">
+    <h2>Thuisaccu</h2>
+    <p class="hint">Capaciteit en vermogens voor de dagplanning.</p>
+    <label>Capaciteit (kWh)</label>
+    <input type="number" id="bat_capacity_kwh" value="5.0" step="0.1" min="1" max="200" />
+    <div class="row2">
+      <div class="field">
+        <label>Max laadvermogen (W)</label>
+        <input type="number" id="bat_max_charge_w" value="2500" step="100" min="100" max="20000" />
+      </div>
+      <div class="field">
+        <label>Max ontlaadvermogen (W)</label>
+        <input type="number" id="bat_max_discharge_w" value="2500" step="100" min="100" max="20000" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Warmtepomp -->
+  <div class="card">
+    <h2>Warmtepomp</h2>
+    <p class="hint">Bij zonne-overschot wordt de insteltemperatuur met dit aantal graden verschoven.</p>
+    <label>Temperatuur offset bij overschot (°C)</label>
+    <input type="number" id="hp_offset_deg" value="1" step="0.5" min="0.5" max="3" />
+  </div>
+
+  <!-- EV -->
+  <div class="card">
+    <h2>EV (elektrische auto)</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Batterijcapaciteit (kWh)</label>
+        <input type="number" id="ev_capacity_kwh" value="75" min="10" max="200" />
+      </div>
+      <div class="field">
+        <label>Standaard doel SoC (%)</label>
+        <input type="number" id="ev_default_soc" value="70" min="20" max="100" />
+      </div>
+    </div>
+
+    <label style="margin-top:6px">Laadmodus</label>
+    <p class="hint">Hoe het EMS de auto laadt als er een EV gekoppeld is.</p>
+    <select id="ev_charge_mode">
+      <option value="solar_only">☀️ Alleen zon — laadt alleen op zonne-overschot</option>
+      <option value="solar_and_grid">☀️🔌 Zon + net — zon-volgend, bijladen bij geplande rit</option>
+      <option value="fixed">📌 Vast vermogen — altijd laden met vaste stroom</option>
+      <option value="fast_charge">⚡ Snel laden — maximale stroom</option>
+      <option value="off">🚫 Uit — EMS laadt de auto niet</option>
+    </select>
+
+    <div class="row2">
+      <div class="field">
+        <label>Max laadstroom (A)</label>
+        <p class="hint">Plafond bij zon-volgend en snel laden</p>
+        <input type="number" id="ev_max_current_a" value="16" min="6" max="32" />
+      </div>
+      <div class="field">
+        <label>Min laadstroom (A)</label>
+        <p class="hint">Onder dit niveau stopt het laden (hardware min = 5A)</p>
+        <input type="number" id="ev_min_current_a" value="6" min="5" max="16" />
+      </div>
+    </div>
+
+    <label style="margin-top:4px">Doelimport bij zon-volgend (W)</label>
+    <p class="hint">Het EMS stuurt op deze netafname tijdens zon-volgend laden. Positief = kleine buffer zodat je nooit terugelevert (aanbevolen bij meerdere omvormers). Negatief = mag tot X watt terugleveren vóórdat de laadstroom omlaag gaat. Standaard: 100 W.</p>
+    <input type="number" id="ev_target_import_w" value="100" min="-1000" max="1000" step="50" />
+
+    <div id="ev_fixed_row" style="display:none">
+      <label>Vaste laadstroom (A)</label>
+      <p class="hint">Stroom die altijd gebruikt wordt in modus "Vast vermogen"</p>
+      <input type="number" id="ev_fixed_current_a" value="8" min="6" max="32" />
+    </div>
+
+    <!-- ── Piekblokken ── -->
+    <label style="margin-top:14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#5f6368">Piekuren — EV geblokkeerd, accu ontlaadt maximaal</label>
+    <p class="hint">Stel twee dagelijkse piektijdvensters in. Binnen deze blokken stopt het EV-laden automatisch en geeft de thuisaccu maximaal vermogen aan het huis.</p>
+
+    <div class="row2" style="margin-top:8px">
+      <div class="field">
+        <label>Ochtendpiek van</label>
+        <select id="ev_peak1_start"></select>
+      </div>
+      <div class="field">
+        <label>tot</label>
+        <select id="ev_peak1_end"></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Avondpiek van</label>
+        <select id="ev_peak2_start"></select>
+      </div>
+      <div class="field">
+        <label>tot</label>
+        <select id="ev_peak2_end"></select>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:2px">Tip: stel 0–0 in om een blok uit te schakelen.</p>
+
+    <!-- ── Nacht laden ── -->
+    <div class="toggle-row" style="margin-top:14px">
+      <input type="checkbox" id="ev_night_charge" />
+      <label for="ev_night_charge">EV 's nachts laden van het net (modus Zon + net)</label>
+    </div>
+    <div id="ev_night_section" style="display:none">
+      <p class="hint">In het nachtvenster laadt de auto op minimale stroom van het net. De thuisaccu wordt niet extra ontladen voor de EV — wel gebruikt voor het huishouden.</p>
+      <div class="row2">
+        <div class="field">
+          <label>Nachtvenster van</label>
+          <select id="ev_night_start"></select>
+        </div>
+        <div class="field">
+          <label>tot</label>
+          <select id="ev_night_end"></select>
+        </div>
+      </div>
+      <label>Minimale thuisaccu SoC voor nacht-laden van EV (%)</label>
+      <p class="hint">De EV laadt 's nachts alleen als de thuisaccu boven dit niveau zit — zo blijft er genoeg over voor de ochtendpiek. Stel in op 0 om nacht-laden altijd toe te staan.</p>
+      <input type="number" id="ev_bat_night_min_soc" value="0" min="0" max="100" />
+
+      <label style="margin-top:12px">Auto staat thuis op</label>
+      <p class="hint">Op deze dagen staat de auto op de oprit. De avond ervóór slaat het EMS nachtladen over — zo kan de auto de volgende dag op zonnestroom laden.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <label style="width:auto;font-weight:400;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ev_home_mon" style="width:auto;margin:0"> Ma</label>
+        <label style="width:auto;font-weight:400;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ev_home_tue" style="width:auto;margin:0"> Di</label>
+        <label style="width:auto;font-weight:400;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ev_home_wed" style="width:auto;margin:0"> Wo</label>
+        <label style="width:auto;font-weight:400;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ev_home_thu" style="width:auto;margin:0"> Do</label>
+        <label style="width:auto;font-weight:400;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ev_home_fri" style="width:auto;margin:0"> Vr</label>
+        <label style="width:auto;font-weight:400;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ev_home_sat" style="width:auto;margin:0"> Za</label>
+        <label style="width:auto;font-weight:400;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ev_home_sun" style="width:auto;margin:0"> Zo</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMS gedrag -->
+  <div class="card">
+    <h2>EMS gedrag</h2>
+    <p class="hint">Minimaal zonne-overschot voordat het EMS actie onderneemt.</p>
+    <label>Overschot drempel (W)</label>
+    <input type="number" id="surplus_threshold" value="300" step="50" min="50" max="2000" />
+  </div>
+
+  <div id="saved-msg">Opgeslagen</div>
+</body>
+</html>

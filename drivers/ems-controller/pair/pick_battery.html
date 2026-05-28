@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    var _Homey;
+    var _allDevices  = [];
+    var _savedBatId  = null;
+
+    window.onHomeyReady = function(Homey) {
+      _Homey = Homey;
+      Homey.ready();
+
+      /* Restore any previously saved values and load devices */
+      Homey.emit('getCurrentData').then(function(d) {
+        if (d) {
+          _savedBatId = d.batteryId || null;
+          if (d.hasBattery != null) document.getElementById('hasBattery').checked = !!d.hasBattery;
+          if (d.batCapacityKwh != null) document.getElementById('batCapacity').value  = d.batCapacityKwh;
+          if (d.batPhase)               document.getElementById('batPhase').value      = d.batPhase;
+          if (d.batMaxChargeW != null)  document.getElementById('batChargeW').value   = d.batMaxChargeW;
+          if (d.batMaxDischargeW != null) document.getElementById('batDischargeW').value = d.batMaxDischargeW;
+          if (d.batMinSoc != null)      document.getElementById('batMinSoc').value    = d.batMinSoc;
+          if (d.batTargetSoc != null)   document.getElementById('batTargetSoc').value = d.batTargetSoc;
+          toggleBattery();
+        }
+        loadDevices();
+      }).catch(function() {
+        loadDevices();
+      });
+
+      /* Auto-save on every change */
+      document.querySelectorAll('input, select').forEach(function(el) {
+        el.addEventListener('change', function() { save(); });
+      });
+    };
+
+    function toggleBattery() {
+      var has = document.getElementById('hasBattery').checked;
+      var fields = document.getElementById('bat-fields');
+      fields.style.opacity       = has ? '1'    : '0.4';
+      fields.style.pointerEvents = has ? 'auto' : 'none';
+      save();
+    }
+
+    function loadDevices() {
+      _Homey.emit('getDevices').then(function(devices) {
+        _allDevices = devices || [];
+        renderBatList();
+      }).catch(function() {
+        document.getElementById('batList').innerHTML = '<div class="empty">Kon apparaten niet laden</div>';
+      });
+    }
+
+    function renderBatList() {
+      var container = document.getElementById('batList');
+      var filtered  = _allDevices.filter(function(d) {
+        var caps = d.capabilities || [];
+        var uri  = (d.driverUri || '').toLowerCase();
+        return caps.indexOf('measure_battery') !== -1 ||
+               (caps.indexOf('measure_power') !== -1 && (
+                 uri.indexOf('marstek') !== -1 || uri.indexOf('batt') !== -1 ||
+                 uri.indexOf('energy_storage') !== -1 || uri.indexOf('solar') !== -1
+               ));
+      });
+      if (filtered.length === 0) {
+        filtered = _allDevices.filter(function(d) {
+          return (d.capabilities || []).indexOf('measure_power') !== -1;
+        });
+        if (filtered.length === 0) filtered = _allDevices.slice(0, 20);
+      }
+      renderItems(container, filtered);
+    }
+
+    function renderItems(container, devices) {
+      if (!devices.length) {
+        container.innerHTML = '<div class="empty">Geen geschikte apparaten gevonden</div>';
+        return;
+      }
+      container.innerHTML = '';
+      devices.forEach(function(dev) {
+        var item = document.createElement('div');
+        item.className  = 'device-item';
+        item.dataset.id = dev.id;
+        if (dev.id === _savedBatId) item.classList.add('selected');
+        var driverName = (dev.driverUri || '').split(':').pop() || '';
+        item.innerHTML =
+          '<div class="check"></div>' +
+          '<div>' +
+            '<div class="device-name">' + dev.name + '</div>' +
+            '<div class="device-driver">' + driverName + '</div>' +
+          '</div>';
+        item.addEventListener('click', function() {
+          container.querySelectorAll('.device-item').forEach(function(i) {
+            i.classList.remove('selected');
+          });
+          item.classList.toggle('selected');
+          save();
+        });
+        container.appendChild(item);
+      });
+    }
+
+    function save() {
+      if (!_Homey) return;
+      var hasBattery = document.getElementById('hasBattery').checked;
+      var selected   = Array.from(document.querySelectorAll('#batList .device-item.selected'))
+                         .map(function(e) { return e.dataset.id; });
+      _Homey.emit('saveBattery', {
+        hasBattery:       hasBattery,
+        batteryId:        selected[0] || null,
+        batCapacityKwh:   parseFloat(document.getElementById('batCapacity').value)   || 5,
+        batPhase:         document.getElementById('batPhase').value,
+        batMaxChargeW:    parseInt(document.getElementById('batChargeW').value)      || 2500,
+        batMaxDischargeW: parseInt(document.getElementById('batDischargeW').value)   || 2500,
+        batMinSoc:        parseInt(document.getElementById('batMinSoc').value)       || 20,
+        batTargetSoc:     parseInt(document.getElementById('batTargetSoc').value)    || 90,
+      }).catch(function() {});
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f8f9fa; color: #202124; padding: 20px; }
+    h1  { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #5f6368; margin-bottom: 18px; }
+    .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px;
+            border: 1px solid #e0e0e0; }
+    h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+         color: #5f6368; margin-bottom: 8px; }
+    .hint { font-size: 11px; color: #5f6368; margin-bottom: 8px; }
+    .device-list { border: 1px solid #e0e0e0; border-radius: 8px; max-height: 180px; overflow-y: auto; }
+    .device-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+                   border-bottom: 1px solid #f1f3f4; cursor: pointer; transition: background .1s; }
+    .device-item:last-child { border-bottom: none; }
+    .device-item:hover { background: #f8f9fa; }
+    .device-item.selected { background: #e8f0fe; }
+    .check { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #ccc;
+             flex-shrink: 0; transition: all .15s; }
+    .device-item.selected .check { background: #1a73e8; border-color: #1a73e8; }
+    .device-name   { font-size: 13px; font-weight: 500; }
+    .device-driver { font-size: 11px; color: #5f6368; }
+    .empty  { padding: 12px; color: #5f6368; font-size: 12px; text-align: center; }
+    .loading { padding: 12px; color: #5f6368; font-size: 13px; text-align: center; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    input, select { width: 100%; padding: 9px 10px; border: 1px solid #e0e0e0;
+                    border-radius: 8px; font-size: 13px; background: #fff; margin-bottom: 8px; }
+    input:focus, select:focus { outline: none; border-color: #1a73e8; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { margin-bottom: 2px; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .toggle-row input[type=checkbox] { width: auto; margin: 0; }
+    .toggle-row label { margin: 0; font-size: 15px; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <h1>🔋 Batterijopslag</h1>
+  <p class="sub">Stap 3 van 4 — Selecteer je batterij en stel de parameters in</p>
+
+  <div class="card">
+    <div class="toggle-row">
+      <input type="checkbox" id="hasBattery" checked onchange="toggleBattery()" />
+      <label for="hasBattery">Ik heb een thuisbatterij</label>
+    </div>
+
+    <div id="bat-fields">
+      <h2>Apparaat</h2>
+      <p class="hint">Selecteer het Homey-apparaat van je thuisaccu (bijv. Marstek, SolarEdge, Huawei).</p>
+      <div class="device-list" id="batList">
+        <div class="loading">Apparaten laden...</div>
+      </div>
+
+      <div style="margin-top:14px">
+        <h2>Specificaties</h2>
+        <div class="row2">
+          <div class="field">
+            <label>Capaciteit (kWh)</label>
+            <input type="number" id="batCapacity" value="5.0" step="0.1" min="1" max="200" />
+          </div>
+          <div class="field">
+            <label>Op fase</label>
+            <select id="batPhase">
+              <option value="1">Fase 1</option>
+              <option value="2">Fase 2</option>
+              <option value="3">Fase 3</option>
+              <option value="all" selected>Alle fasen</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Max laadvermogen (W)</label>
+            <input type="number" id="batChargeW" value="2500" step="100" min="100" max="20000" />
+          </div>
+          <div class="field">
+            <label>Max ontlaadvermogen (W)</label>
+            <input type="number" id="batDischargeW" value="2500" step="100" min="100" max="20000" />
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:4px">
+        <h2>Laadstrategie</h2>
+        <div class="row2">
+          <div class="field">
+            <label>Minimum SoC (%)</label>
+            <input type="number" id="batMinSoc" value="20" min="5" max="50" />
+          </div>
+          <div class="field">
+            <label>Doel SoC (%)</label>
+            <input type="number" id="batTargetSoc" value="90" min="50" max="100" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

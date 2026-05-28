@@ -1,0 +1,122 @@
+<html>
+<head>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--homey-font-family, -apple-system, sans-serif);
+      background: transparent;
+      padding: 12px;
+      color: var(--homey-text-color, #202124);
+    }
+    .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .title { font-size: 13px; font-weight: 600; opacity: .6; letter-spacing: 1px; }
+    .mode { font-size: 11px; padding: 2px 10px; border-radius: 10px;
+            background: var(--homey-color-blue-light, #e8f0fe);
+            color: var(--homey-color-blue, #1a73e8); font-weight: 600; }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .metric .label { font-size: 10px; opacity: .55; text-transform: uppercase; letter-spacing: .5px; }
+    .metric .value { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .metric .sub   { font-size: 10px; opacity: .5; }
+    .solar  { color: #f59e0b; }
+    .bat    { color: var(--homey-color-blue, #1a73e8); }
+    .grid-exp { color: #34a853; }
+    .grid-imp { color: #ea4335; }
+    .bar-wrap { width: 100%; height: 5px; border-radius: 3px;
+                background: var(--homey-color-mono-50, #e0e0e0); margin-top: 3px; }
+    .bar-fill { height: 100%; border-radius: 3px;
+                background: var(--homey-color-blue, #1a73e8); }
+    .bottom { font-size: 11px; opacity: .55; border-top: 1px solid var(--homey-color-mono-50, #e0e0e0);
+              padding-top: 8px; display: flex; justify-content: space-between; }
+    .plan-ok  { color: #34a853; }
+    .plan-warn { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="title">⚡ EMS</div>
+    <div class="mode" id="mode">–</div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">Solar</div>
+      <div class="value solar" id="pvW">–</div>
+      <div class="sub" id="pvSub">–</div>
+    </div>
+    <div class="metric">
+      <div class="label">Battery</div>
+      <div class="value bat" id="batSoc">–</div>
+      <div class="bar-wrap"><div class="bar-fill" id="batBar" style="width:0%"></div></div>
+    </div>
+    <div class="metric">
+      <div class="label">Grid</div>
+      <div class="value" id="gridW">–</div>
+      <div class="sub" id="gridSub">–</div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <span id="planStatus">Plan: –</span>
+    <span id="hpMode">–</span>
+  </div>
+
+  <script>
+    const MODE_LABELS = {
+      auto: 'Auto', battery_charge: '↑ Laden', solar_surplus: '☀ Overschot',
+      battery_discharge: '↓ Ontladen', grid_import: '⚡ Net', idle: '–',
+    };
+
+    function fmtW(w) {
+      if (w == null) return '–';
+      return w >= 1000 ? (w/1000).toFixed(1)+'kW' : Math.round(w)+'W';
+    }
+
+    function set(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    }
+
+    async function refresh() {
+      try {
+        const s = await Homey.api('GET', '/state', {});
+        if (!s || !s.ready) return;
+
+        set('mode', MODE_LABELS[s.mode] || s.mode);
+        set('pvW',  fmtW(s.pvW));
+        set('pvSub', s.pvKwhToday != null ? (s.pvKwhToday.toFixed(1)+' kWh') : '–');
+
+        const soc = s.batSoc ?? 0;
+        set('batSoc', soc.toFixed(0)+'%');
+        const bar = document.getElementById('batBar');
+        if (bar) bar.style.width = soc+'%';
+
+        const gw = s.gridW ?? 0;
+        const gridEl = document.getElementById('gridW');
+        if (gridEl) {
+          gridEl.textContent = fmtW(Math.abs(gw));
+          gridEl.className = 'value ' + (gw < -50 ? 'grid-exp' : gw > 50 ? 'grid-imp' : 'bat');
+        }
+        set('gridSub', gw < -50 ? '↑ export' : gw > 50 ? '↓ import' : 'balans');
+
+        const plan = s.plan;
+        const planEl = document.getElementById('planStatus');
+        if (planEl && plan) {
+          planEl.textContent = plan.prio1Feasible ? '✓ Plan haalbaar' : '⚠ Plan krap';
+          planEl.className = plan.prio1Feasible ? 'plan-ok' : 'plan-warn';
+        }
+
+        const hpLabels = { heating: '🔥 Verwarmen', cooling: '❄️ Koelen' };
+        set('hpMode', hpLabels[s.hpMode] || '');
+      } catch(e) {
+        console.error('EMS widget error', e);
+      }
+    }
+
+    function onHomeyReady(Homey) {
+      Homey.ready();
+      refresh();
+      setInterval(refresh, 15000);
+    }
+  </script>
+</body>
+</html>

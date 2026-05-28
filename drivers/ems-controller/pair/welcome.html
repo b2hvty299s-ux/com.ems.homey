@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    var _Homey;
+
+    window.onHomeyReady = function(Homey) {
+      _Homey = Homey;
+      Homey.ready();
+
+      /* Restore any previously saved values, then save once to ensure
+         driver has correct data (not stale defaults). */
+      Homey.emit('getCurrentData').then(function(d) {
+        if (d) {
+          if (d.lat != null)         document.getElementById('lat').value              = d.lat;
+          if (d.lon != null)         document.getElementById('lon').value              = d.lon;
+          if (d.phases != null)      document.getElementById('phases').value           = d.phases;
+          if (d.maxAmps != null)     document.getElementById('maxAmps').value          = d.maxAmps;
+          if (d.contractType)        document.getElementById('contractType').value     = d.contractType;
+          if (d.priceImport != null) document.getElementById('priceImport').value      = d.priceImport;
+          if (d.priceExport != null) document.getElementById('priceExport').value      = d.priceExport;
+          if (d.dayAheadProvider)    document.getElementById('dayAheadProvider').value = d.dayAheadProvider;
+          if (d.dayAheadApiKey)      document.getElementById('dayAheadApiKey').value   = d.dayAheadApiKey;
+          toggleDynamic();
+        }
+        /* Save AFTER restoring — never before — so we don't overwrite
+           previously entered values with form defaults. */
+        save();
+      }).catch(function() {
+        save(); /* No previous data: save form defaults */
+      });
+
+      /* Auto-save on every change */
+      document.querySelectorAll('input, select').forEach(function(el) {
+        if (el.id === 'cityPreset') return; /* handled separately */
+        el.addEventListener('change', function() {
+          if (el.id === 'contractType') toggleDynamic();
+          save();
+        });
+      });
+
+      /* City preset: fills lat/lon then saves */
+      document.getElementById('cityPreset').addEventListener('change', function() {
+        var val = this.value;
+        if (!val) return;
+        var parts = val.split(',');
+        document.getElementById('lat').value = parts[0];
+        document.getElementById('lon').value = parts[1];
+        save();
+      });
+    };
+
+    function save() {
+      if (!_Homey) return;
+      _Homey.emit('saveWelcome', {
+        lat:              parseFloat(document.getElementById('lat').value)         || 52.3,
+        lon:              parseFloat(document.getElementById('lon').value)         || 4.9,
+        phases:           parseInt(document.getElementById('phases').value)        || 3,
+        maxAmps:          parseInt(document.getElementById('maxAmps').value)       || 25,
+        contractType:     document.getElementById('contractType').value,
+        priceImport:      parseFloat(document.getElementById('priceImport').value) || 0.30,
+        priceExport:      parseFloat(document.getElementById('priceExport').value) || 0.09,
+        dayAheadProvider: document.getElementById('dayAheadProvider').value        || 'entso-e',
+        dayAheadApiKey:   document.getElementById('dayAheadApiKey').value          || '',
+      }).catch(function() {});
+    }
+
+    function toggleDynamic() {
+      var isDyn = document.getElementById('contractType').value === 'dynamic';
+      document.getElementById('fixed-fields').style.display   = isDyn ? 'none'  : 'block';
+      document.getElementById('dynamic-fields').style.display = isDyn ? 'block' : 'none';
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f8f9fa; color: #202124; padding: 20px; }
+    h1  { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #5f6368; margin-bottom: 18px; }
+    .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px;
+            border: 1px solid #e0e0e0; }
+    h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+         color: #5f6368; margin-bottom: 10px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    .hint { font-size: 11px; color: #5f6368; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 9px 10px; border: 1px solid #e0e0e0;
+                    border-radius: 8px; font-size: 13px; background: #fff; margin-bottom: 8px; }
+    input:focus, select:focus { outline: none; border-color: #1a73e8; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  </style>
+</head>
+<body>
+  <h1>⚡ EMS instellen</h1>
+  <p class="sub">Stap 1 van 4 — Locatie & energiecontract</p>
+
+  <div class="card">
+    <h2>Locatie</h2>
+    <p class="hint">Nodig voor weersverwachting en zonsopkomstberekening.</p>
+    <label>Stad / regio</label>
+    <select id="cityPreset">
+      <option value="">— Kies een stad of vul handmatig in —</option>
+      <option value="52.3728,4.8936">Amsterdam</option>
+      <option value="51.9225,4.4791">Rotterdam</option>
+      <option value="52.0705,4.3007">Den Haag</option>
+      <option value="52.0907,5.1214">Utrecht</option>
+      <option value="51.4416,5.4697">Eindhoven</option>
+      <option value="51.5553,5.0913">Tilburg</option>
+      <option value="51.8426,5.8546">Nijmegen</option>
+      <option value="52.3508,5.2647">Almere</option>
+      <option value="51.5719,4.7683">Breda</option>
+      <option value="53.2194,6.5665">Groningen</option>
+      <option value="52.5168,6.0830">Zwolle</option>
+      <option value="53.2012,5.7999">Leeuwarden</option>
+      <option value="51.6978,5.3037">Den Bosch</option>
+      <option value="51.4390,5.4786">Veldhoven</option>
+      <option value="52.1551,5.3874">Amersfoort</option>
+      <option value="52.1601,4.4970">Leiden</option>
+      <option value="51.8250,4.6690">Dordrecht</option>
+      <option value="52.4543,4.6088">Haarlem</option>
+    </select>
+    <div class="row2">
+      <div>
+        <label>Breedtegraad</label>
+        <input type="number" id="lat" value="52.3" step="0.0001" min="50" max="54" />
+      </div>
+      <div>
+        <label>Lengtegraad</label>
+        <input type="number" id="lon" value="4.9" step="0.0001" min="3" max="8" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Netaansluiting</h2>
+    <div class="row2">
+      <div>
+        <label>Fasen</label>
+        <select id="phases">
+          <option value="1">1 fase</option>
+          <option value="3" selected>3 fasen</option>
+        </select>
+      </div>
+      <div>
+        <label>Max capaciteit (A)</label>
+        <input type="number" id="maxAmps" value="25" min="10" max="80" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Energiecontract</h2>
+    <label>Type contract</label>
+    <select id="contractType">
+      <option value="fixed" selected>Vast tarief</option>
+      <option value="dynamic">Dynamisch (uurprijzen)</option>
+    </select>
+    <div id="fixed-fields">
+      <div class="row2">
+        <div>
+          <label>Inkoopprijs (€/kWh)</label>
+          <input type="number" id="priceImport" value="0.30" step="0.01" min="0" max="2" />
+        </div>
+        <div>
+          <label>Terugleverprijs (€/kWh)</label>
+          <input type="number" id="priceExport" value="0.09" step="0.01" min="0" max="1" />
+        </div>
+      </div>
+    </div>
+    <div id="dynamic-fields" style="display:none">
+      <label>Provider</label>
+      <select id="dayAheadProvider">
+        <option value="entso-e">ENTSO-E (gratis)</option>
+        <option value="tibber">Tibber</option>
+      </select>
+      <label>API key</label>
+      <input type="text" id="dayAheadApiKey" placeholder="API key (indien vereist)" />
+    </div>
+  </div>
+</body>
+</html>

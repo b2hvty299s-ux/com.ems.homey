@@ -1,0 +1,6 @@
+{
+  "1.0.0": {
+    "en": "Initial release. Solar, battery, EV (Tesla + Wall Connector) and heat pump management with daily planning based on weather forecast.",
+    "nl": "Eerste versie. Zonnepanelen, batterij, EV (Tesla + Wall Connector) en warmtepomp-beheer met dagplanning op basis van weersvoorspelling."
+  }
+}

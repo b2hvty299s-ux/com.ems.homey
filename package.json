@@ -1,0 +1,21 @@
+{
+  "name": "com.ems.homey",
+  "version": "1.0.0",
+  "description": "Smart Energy Management System for Homey Pro",
+  "main": "app.js",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "echo 'No tests yet'"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "homey": "*",
+    "homey-api": "*"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,75 @@
+{
+  "ems": {
+    "mode": {
+      "auto":               "Automatisch",
+      "solar_surplus":      "Zonne-overschot",
+      "battery_charge":     "Batterij laden",
+      "battery_discharge":  "Batterij ontladen",
+      "grid_import":        "Netimport",
+      "idle":               "Inactief"
+    },
+    "heatpump": {
+      "heating": "Verwarmen",
+      "cooling": "Koelen"
+    },
+    "ev": {
+      "profile": {
+        "solar_only":     "Alleen zon",
+        "solar_and_grid": "Zon + net",
+        "fixed":          "Vaste stroom",
+        "fast_charge":    "Snel laden",
+        "off":            "Uit"
+      }
+    }
+  },
+  "settings": {
+    "battery": {
+      "min_soc":       "Minimum SoC (%)",
+      "min_soc_hint":  "De batterij wordt nooit onder dit niveau ontladen.",
+      "target_soc":    "Doel SoC (%)",
+      "target_hint":   "De EMS laadt de batterij tot dit niveau via zonne-overschot."
+    },
+    "solar": {
+      "surplus_threshold":      "Overschot drempel (W)",
+      "surplus_threshold_hint": "Minimaal zonne-overschot voordat de EMS actie onderneemt."
+    },
+    "ev": {
+      "charge_mode":       "Laadmodus",
+      "fixed_current":     "Vaste laadstroom (A)",
+      "max_current":       "Maximale laadstroom (A)",
+      "min_current":       "Minimale laadstroom (A)",
+      "capacity":          "Batterijcapaciteit (kWh)",
+      "default_soc":       "Standaard doel SoC (%)",
+      "phases":            "Aantal fasen",
+      "max_amps":          "Maximale stroom (A)",
+      "wall_connector_ip": "Wall Connector IP-adres"
+    },
+    "heatpump": {
+      "offset_step":       "Bijstuurstap (°C)",
+      "offset_step_hint":  "Temperatuurcorrectie per overschotniveau.",
+      "max_offset":        "Maximum offset (°C)",
+      "night_threshold":   "Nachttemperatuur drempel (°C)",
+      "night_hint":        "Schakel naar koelen als nachttemperatuur dit overschrijdt.",
+      "day_threshold":     "Dagtemperatuur drempel (°C)",
+      "day_hint":          "Schakel naar koelen als dagtemperatuur dit ook overschrijdt."
+    },
+    "prices": {
+      "import":    "Inkoopprijs (€/kWh)",
+      "export":    "Terugleverprijs (€/kWh)",
+      "contract":  "Contracttype",
+      "fixed":     "Vast tarief",
+      "dynamic":   "Dynamisch (uurprijzen)"
+    }
+  },
+  "notifications": {
+    "trip_planned":    "EV-rit gepland",
+    "ev_ready":        "Auto klaar voor vertrek",
+    "prio1_warning":   "Waarschuwing: morgen onvoldoende zon voor alle prioriteit 1 apparaten",
+    "bat_low":         "Batterij onder minimum SoC"
+  },
+  "errors": {
+    "setup_incomplete": "Setup niet voltooid. Open de app-instellingen om de installatiewizard te starten.",
+    "device_not_found": "Apparaat niet gevonden. Controleer de app-instellingen.",
+    "wall_connector":   "Kan Wall Connector niet bereiken. Controleer het IP-adres in de instellingen."
+  }
+}

@@ -1,0 +1,205 @@
+<!-- 
+  EV Laadprofiel instellingen
+  Dit blok wordt gebruikt in zowel de wizard (stap 5) als de losse instellingenpagina.
+  
+  Settings:
+    ev_charge_mode        solar_only | solar_and_grid | fixed | fast_charge | off
+    ev_fixed_current_a    vaste stroom in A
+    ev_max_current_a      maximum stroom voor solar/fast modes
+    ev_min_current_a      minimum stroom voor solar following
+-->
+
+<style>
+  .profile-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .profile-card  { border: 2px solid var(--border, #e0e0e0); border-radius: 10px; padding: 12px 10px;
+                   cursor: pointer; text-align: center; transition: all .15s; background: #fff; }
+  .profile-card:hover   { border-color: #aaa; }
+  .profile-card.active  { border-color: var(--blue, #1a73e8); background: #e8f0fe; }
+  .profile-card .icon   { font-size: 22px; margin-bottom: 4px; }
+  .profile-card .label  { font-size: 13px; font-weight: 600; }
+  .profile-card .desc   { font-size: 11px; color: #5f6368; margin-top: 2px; }
+
+  .current-display { display: flex; align-items: center; gap: 12px; }
+  .current-big     { font-size: 36px; font-weight: 700; color: var(--blue, #1a73e8); min-width: 60px; text-align: right; }
+  .current-unit    { font-size: 14px; color: #5f6368; }
+  .current-watt    { font-size: 12px; color: #5f6368; }
+  .slider-wrap     { flex: 1; }
+  input[type=range] { width: 100%; accent-color: var(--blue, #1a73e8); }
+
+  .bounds-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .hidden { display: none; }
+</style>
+
+<div id="evProfileSection">
+
+  <!-- Mode selector -->
+  <div class="profile-cards" id="modeCards">
+    <div class="profile-card" data-mode="solar_only" onclick="selectMode('solar_only')">
+      <div class="icon">☀️</div>
+      <div class="label">Alleen zon</div>
+      <div class="desc">Stopt als er geen overschot is</div>
+    </div>
+    <div class="profile-card" data-mode="solar_and_grid" onclick="selectMode('solar_and_grid')">
+      <div class="icon">☀️🔌</div>
+      <div class="label">Zon + net</div>
+      <div class="desc">Zon-volgend, bijladen van net bij rit</div>
+    </div>
+    <div class="profile-card" data-mode="fixed" onclick="selectMode('fixed')">
+      <div class="icon">📌</div>
+      <div class="label">Vast</div>
+      <div class="desc">Altijd met vaste stroom laden</div>
+    </div>
+    <div class="profile-card" data-mode="fast_charge" onclick="selectMode('fast_charge')">
+      <div class="icon">⚡</div>
+      <div class="label">Snel laden</div>
+      <div class="desc">Maximaal vermogen</div>
+    </div>
+    <div class="profile-card" data-mode="off" onclick="selectMode('off')">
+      <div class="icon">🚫</div>
+      <div class="label">Uit</div>
+      <div class="desc">EMS laadt niet</div>
+    </div>
+  </div>
+
+  <!-- Fixed current slider (only visible in fixed mode) -->
+  <div id="fixedCurrentPanel" class="card hidden">
+    <label style="font-weight:600;margin-bottom:10px;display:block">Vaste laadstroom</label>
+    <div class="current-display">
+      <div>
+        <div class="current-big" id="fixedCurrentVal">8</div>
+        <div class="current-unit">A</div>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" id="fixedCurrentSlider" min="6" max="32" step="1" value="8"
+               oninput="updateFixedCurrent(this.value)" />
+        <div class="current-watt" id="fixedCurrentWatt">≈ 5520W op 3 fasen</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#5f6368;margin-top:8px">
+      💡 Vast vermogen maakt de dag-voorspelling nauwkeuriger — de EMS weet precies hoeveel de auto verbruikt.
+    </p>
+  </div>
+
+  <!-- Solar bounds (visible in solar modes) -->
+  <div id="solarBoundsPanel" class="card hidden">
+    <label style="font-weight:600;margin-bottom:10px;display:block">Zon-volgend grenzen</label>
+    <div class="bounds-row">
+      <div>
+        <label>Maximum stroom (A)</label>
+        <p style="font-size:11px;color:#5f6368;margin-bottom:6px">Begrenst de max laadsnelheid ook bij veel zon</p>
+        <div class="current-display" style="gap:8px">
+          <input type="range" id="maxCurrentSlider" min="6" max="32" step="1" value="16"
+                 oninput="updateBound('max', this.value)" style="flex:1;accent-color:#1a73e8" />
+          <span id="maxCurrentVal" style="font-size:18px;font-weight:700;min-width:36px;text-align:right">16A</span>
+        </div>
+        <div style="font-size:11px;color:#5f6368" id="maxCurrentWatt">≈ 11040W</div>
+      </div>
+      <div>
+        <label>Minimum stroom (A)</label>
+        <p style="font-size:11px;color:#5f6368;margin-bottom:6px">Onder dit niveau stopt het laden</p>
+        <div class="current-display" style="gap:8px">
+          <input type="range" id="minCurrentSlider" min="6" max="16" step="1" value="6"
+                 oninput="updateBound('min', this.value)" style="flex:1;accent-color:#34a853" />
+          <span id="minCurrentVal" style="font-size:18px;font-weight:700;min-width:36px;text-align:right">6A</span>
+        </div>
+        <div style="font-size:11px;color:#5f6368" id="minCurrentWatt">≈ 4140W</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary line -->
+  <div id="profileSummary" style="font-size:13px;color:#5f6368;margin-top:8px;padding:10px;background:#f8f9fa;border-radius:8px"></div>
+
+</div>
+
+<script>
+// ─── EV Profile Widget ────────────────────────────────────────────────────
+
+let _evPhases = 3; // set by parent page
+
+function initEvProfile(phases, settings) {
+  _evPhases = phases || 3;
+
+  // Restore values
+  if (settings) {
+    document.getElementById('fixedCurrentSlider').value = settings.fixedCurrentA || 8;
+    document.getElementById('maxCurrentSlider').value   = settings.maxCurrentA   || 16;
+    document.getElementById('minCurrentSlider').value   = settings.minCurrentA   || 6;
+    document.getElementById('maxCurrentSlider').max     = settings.hardMaxA      || 32;
+    document.getElementById('fixedCurrentSlider').max   = settings.hardMaxA      || 32;
+    updateFixedCurrent(settings.fixedCurrentA || 8);
+    updateBound('max', settings.maxCurrentA   || 16);
+    updateBound('min', settings.minCurrentA   || 6);
+    selectMode(settings.mode || 'solar_only', false);
+  } else {
+    selectMode('solar_only', false);
+  }
+}
+
+function selectMode(mode, save = true) {
+  // Update card highlights
+  document.querySelectorAll('.profile-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.mode === mode);
+  });
+
+  // Show/hide panels
+  const isFixed  = mode === 'fixed';
+  const isSolar  = mode === 'solar_only' || mode === 'solar_and_grid';
+  const isOff    = mode === 'off';
+
+  document.getElementById('fixedCurrentPanel').classList.toggle('hidden', !isFixed);
+  document.getElementById('solarBoundsPanel').classList.toggle('hidden', !isSolar);
+
+  _updateSummary(mode);
+
+  if (save) {
+    window._evProfileMode = mode;
+  }
+}
+
+function updateFixedCurrent(val) {
+  val = parseInt(val);
+  document.getElementById('fixedCurrentVal').textContent  = val;
+  document.getElementById('fixedCurrentWatt').textContent = `≈ ${_toW(val)}W op ${_evPhases} fase${_evPhases > 1 ? 'n' : ''}`;
+  _updateSummary(window._evProfileMode || 'fixed');
+}
+
+function updateBound(type, val) {
+  val = parseInt(val);
+  const prefix = type === 'max' ? 'max' : 'min';
+  document.getElementById(`${prefix}CurrentVal`).textContent  = `${val}A`;
+  document.getElementById(`${prefix}CurrentWatt`).textContent = `≈ ${_toW(val)}W`;
+  _updateSummary(window._evProfileMode || 'solar_only');
+}
+
+function _updateSummary(mode) {
+  const el = document.getElementById('profileSummary');
+  if (!el) return;
+
+  const fixed  = parseInt(document.getElementById('fixedCurrentSlider')?.value || 8);
+  const maxA   = parseInt(document.getElementById('maxCurrentSlider')?.value   || 16);
+  const minA   = parseInt(document.getElementById('minCurrentSlider')?.value   || 6);
+
+  const summaries = {
+    solar_only:    `☀️ Laadt tussen ${_toW(minA)}W en ${_toW(maxA)}W als er zonne-overschot is. Stopt bij minder dan ${minA}A overschot.`,
+    solar_and_grid:`☀️🔌 Laadt op zonne-overschot (${_toW(minA)}–${_toW(maxA)}W). Bij geplande rit en weinig zon: bijladen van net.`,
+    fixed:         `📌 Laadt altijd met ${fixed}A (${_toW(fixed)}W) — ook 's nachts of bij geen zon. Voorspelbaar voor de planning.`,
+    fast_charge:   `⚡ Laadt zo snel mogelijk met max ${maxA}A (${_toW(maxA)}W).`,
+    off:           `🚫 EMS laadt de Tesla niet. Handmatig laden is nog steeds mogelijk.`,
+  };
+  el.textContent = summaries[mode] || '';
+}
+
+function _toW(currentA) {
+  return Math.round(currentA * 230 * _evPhases);
+}
+
+function getEvProfileSettings() {
+  return {
+    mode:           window._evProfileMode || document.querySelector('.profile-card.active')?.dataset.mode || 'solar_only',
+    fixedCurrentA:  parseInt(document.getElementById('fixedCurrentSlider')?.value || 8),
+    maxCurrentA:    parseInt(document.getElementById('maxCurrentSlider')?.value   || 16),
+    minCurrentA:    parseInt(document.getElementById('minCurrentSlider')?.value   || 6),
+  };
+}
+</script>
