@@ -11,8 +11,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "homey": "*",
-    "homey-api": "*"
+    "homey": "^4.2.3",
+    "homey-api": "^3.19.0"
   },
   "devDependencies": {
     "eslint": "^8.0.0"

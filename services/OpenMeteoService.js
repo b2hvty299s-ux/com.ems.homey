@@ -74,7 +74,7 @@ class OpenMeteoService {
     this.app.log(`[OpenMeteo] Fetching forecast...`);
 
     try {
-      const res  = await fetch(url);
+      const res  = await fetch(url, { signal: AbortSignal.timeout(8000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 

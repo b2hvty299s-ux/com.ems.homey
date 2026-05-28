@@ -118,8 +118,14 @@ class EmsManager {
 
   // ─── Public API ───────────────────────────────────────────────────────────
 
-  setMode(mode) { this.mode = mode; }
-  getMode()     { return this.mode; }
+  setMode(mode) {
+    if (this.mode !== mode) {
+      this.app.log(`[EMS] Mode changed: ${this.mode} → ${mode}`);
+      this.mode = mode;
+      this.homey.emit('ems:modeChanged', mode);
+    }
+  }
+  getMode() { return this.mode; }
 
   getPublicState() {
     const s = this._lastState;

@@ -1,6 +1,6 @@
 {
   "id": "com.ems.homey",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "compatibility": ">=12.0.0",
   "sdk": 3,
   "brandColor": "#0d1f3c",
@@ -37,14 +37,14 @@
     "homey:manager:api"
   ],
   "author": {
-    "name": "Your Name",
-    "email": "you@example.com"
+    "name": "Menno",
+    "email": "qfsdhh98z4@privaterelay.appleid.com"
   },
   "bugs": {
-    "url": "https://github.com/yourname/com.ems.homey/issues"
+    "url": "https://github.com/b2hvty299s-ux/com.ems.homey/issues"
   },
-  "source": "https://github.com/yourname/com.ems.homey",
-  "homepage": "https://github.com/yourname/com.ems.homey",
+  "source": "https://github.com/b2hvty299s-ux/com.ems.homey",
+  "homepage": "https://github.com/b2hvty299s-ux/com.ems.homey",
   "images": {
     "small": "/assets/images/small.png",
     "large": "/assets/images/large.png",

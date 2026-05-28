@@ -54,10 +54,18 @@ class PlanningEngine {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      // 1. Fetch external data
+      // 1. Fetch external data — individual catches so one failure doesn't abort the plan
       const [forecast, prices] = await Promise.all([
-        this.openMeteo.getForecast(),
-        this.dayAheadPrices ? this.dayAheadPrices.getTomorrowPrices() : null,
+        this.openMeteo.getForecast().catch(err => {
+          this.app.error('[Planning] Weather API failed, using fallback:', err.message);
+          return this.openMeteo._fallback();
+        }),
+        this.dayAheadPrices
+          ? this.dayAheadPrices.getTomorrowPrices().catch(err => {
+              this.app.error('[Planning] Day-ahead prices API failed:', err.message);
+              return null;
+            })
+          : null,
       ]);
 
       // 3. PV production curve (kWh per hour) — uses Open-Meteo radiation directly
