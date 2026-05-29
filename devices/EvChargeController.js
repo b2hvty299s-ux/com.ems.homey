@@ -412,10 +412,12 @@ class EvChargeController {
     const minPowerW = this._toWatts(this._minCurrentA);
 
     if (evState.charging) {
-      if (surplusW < -(minPowerW * 0.25)) {
+      // Stop when surplus is clearly negative (importing from grid to power the EV).
+      // Small hysteresis of 200W prevents chattering on sensor jitter or brief clouds.
+      if (surplusW < -200) {
         return { type: 'stop', reason: 'surplus_gone', surplusW };
       }
-      // Always enforce minCurrentA — 'hold' would leave a previously higher current unchanged
+      // Always enforce minCurrentA — never leave a higher current from a previous session
       return { type: 'charge', currentA: this._minCurrentA, reason: 'surplus_ok', surplusW };
     }
 
@@ -438,7 +440,7 @@ class EvChargeController {
     const minPowerW = this._toWatts(this._minCurrentA);
 
     if (evState.charging) {
-      if (surplusW >= -(minPowerW * 0.25)) {
+      if (surplusW >= -200) {
         // Enforce minCurrentA — never leave a higher current from a previous session
         return { type: 'charge', currentA: this._minCurrentA, reason: 'surplus_ok', surplusW };
       }
@@ -527,13 +529,20 @@ class EvChargeController {
   }
 
   _calculateSurplus(emsState, evState) {
-    const exportW = Math.max(0, -(emsState.gridW ?? 0));
+    const gridW   = emsState.gridW ?? 0;   // positive = importing, negative = exporting
     const evLoadW = evState?.powerW
       ?? (this._currentTargetA > 0 ? this._toWatts(this._currentTargetA) : 0);
-    // Subtract target import so the EV charges slightly below full surplus,
-    // leaving a small grid import buffer. Avoids phase-imbalance export with
-    // asymmetric multi-inverter setups. Negative result = not enough surplus.
-    return exportW + evLoadW - this._targetImportW;
+
+    // Available solar power for EV:
+    //   surplus = evLoadW - gridW - targetImportW
+    //
+    // Examples:
+    //   Exporting 500W, EV off:        0 - (-500) - 100 =  400W  → not enough for 5A yet
+    //   Exporting 1500W, EV off:       0 - (-1500) - 100 = 1400W → start at 5A
+    //   Exporting 500W, EV on 1150W:   1150 - (-500) - 100 = 1550W → keep charging ✓
+    //   Importing 329W, EV on 3435W:   3435 - 3764 - 100 = -429W → stop ✓ (no real surplus)
+    //   Brief cloud (-100W import):    1150 - 100 - 100 = 950W → keep going (hysteresis) ✓
+    return evLoadW - gridW - this._targetImportW;
   }
 
   _logTick(evState, action, mode) {
