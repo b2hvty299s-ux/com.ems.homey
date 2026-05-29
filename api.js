@@ -18,6 +18,16 @@ module.exports = {
     }
   },
 
+  async getActuals({ homey }) {
+    const now  = new Date();
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '');  // YYYYMMDD
+    return Array.from({ length: 24 }, (_, h) => {
+      const d = homey.settings.get(`actuals_${date}_${h}`);
+      if (!d || d.n === 0) return null;
+      return { pvW: d.pvW, gridW: d.gridW, batW: d.batW, evW: d.evW };
+    });
+  },
+
   async getState({ homey }) {
     return homey.app.ems.getPublicState();
   },

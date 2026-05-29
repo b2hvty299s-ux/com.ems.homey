@@ -171,6 +171,7 @@ class EmsManager {
 
       await this._executeTick(state, hourSlot);
       await this._updateConsumptionHistory(state);
+      this._recordActuals(state);
     } catch (err) {
       this.app.error('[EMS] tick error:', err);
     }
@@ -300,6 +301,31 @@ class EmsManager {
       const houseLoadW = state.pvW + Math.max(0, state.gridW) - Math.max(0, state.batPowerW);
       await this.consumption.recordReading(Math.max(0, houseLoadW));
     }
+  }
+
+  /**
+   * Record hourly power averages for the dashboard chart.
+   * Called every tick (1 min). Stores running average per hour slot in Homey settings.
+   * Key format: actuals_YYYYMMDD_HH  →  { n, pvW, gridW, batW, evW }
+   * Only today's 24 keys are kept; previous days expire naturally.
+   */
+  _recordActuals(state) {
+    const now  = new Date();
+    const date = now.toISOString().slice(0, 10).replace(/-/g, '');  // YYYYMMDD
+    const hour = now.getHours();
+    const key  = `actuals_${date}_${hour}`;
+
+    const cur  = this.homey.settings.get(key) || { n: 0, pvW: 0, gridW: 0, batW: 0, evW: 0 };
+    const n    = cur.n + 1;
+    const avg  = (old, val) => Math.round((old * cur.n + (val ?? 0)) / n);
+
+    this.homey.settings.set(key, {
+      n,
+      pvW:   avg(cur.pvW,   state.pvW),
+      gridW: avg(cur.gridW,  state.gridW),
+      batW:  avg(cur.batW,   state.batPowerW),
+      evW:   avg(cur.evW,    state.evW),
+    });
   }
 
   // ─── EMS Controller device ────────────────────────────────────────────────

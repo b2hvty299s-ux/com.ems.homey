@@ -2,49 +2,92 @@
 <head>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: var(--homey-font-family, -apple-system, sans-serif);
       background: transparent;
-      padding: 10px 12px 8px;
+      padding: 10px 12px 6px;
       color: var(--homey-text-color, #202124);
     }
 
     /* ── Header ── */
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .title  { font-size: 12px; font-weight: 700; opacity: .55; letter-spacing: 1px; }
-    .mode   { font-size: 10px; padding: 2px 9px; border-radius: 8px;
-              background: var(--homey-color-blue-light, #e8f0fe);
-              color: var(--homey-color-blue, #1a73e8); font-weight: 700; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .title  { font-size: 11px; font-weight: 700; opacity: .5; letter-spacing: 1px; text-transform: uppercase; }
+    .mode-badge {
+      font-size: 10px; padding: 2px 10px; border-radius: 8px;
+      background: rgba(26,115,232,.13);
+      color: var(--homey-color-blue, #1a73e8);
+      font-weight: 700;
+    }
 
-    /* ── Battery SoC bar ── */
-    .soc-row { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; }
-    .soc-label { font-size: 9px; opacity: .5; text-transform: uppercase; letter-spacing: .4px; width: 30px; }
-    .soc-track { flex: 1; height: 5px; border-radius: 3px;
-                 background: var(--homey-color-mono-50, #e0e0e0); }
-    .soc-fill  { height: 100%; border-radius: 3px; background: #eab308;
-                 transition: width .6s ease; }
-    .soc-val   { font-size: 11px; font-weight: 700; color: #eab308; width: 32px; text-align: right; }
+    /* ── Live metrics row ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .metric {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: rgba(128,128,128,.07);
+      border-radius: 8px;
+      padding: 5px 4px 4px;
+    }
+    .metric-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      margin-bottom: 3px;
+    }
+    .metric-label {
+      font-size: 9px;
+      opacity: .5;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .metric-val {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: -.2px;
+    }
 
-    /* ── Power rows ── */
-    .power-rows { margin-bottom: 9px; }
-    .prow { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
-    .pdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .pname { font-size: 10px; opacity: .55; width: 30px; flex-shrink: 0; }
-    .ptrack { flex: 1; height: 3px; border-radius: 2px;
-              background: var(--homey-color-mono-50, #e0e0e0); }
-    .pfill  { height: 100%; border-radius: 2px; transition: width .6s ease; }
-    .pval   { font-size: 11px; font-weight: 600; width: 56px; text-align: right; flex-shrink: 0; }
+    /* ── SoC bar ── */
+    .soc-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 8px;
+    }
+    .soc-label { font-size: 9px; opacity: .45; text-transform: uppercase; letter-spacing: .4px; width: 26px; }
+    .soc-track { flex: 1; height: 4px; border-radius: 2px; background: rgba(128,128,128,.2); }
+    .soc-fill  { height: 100%; border-radius: 2px; background: #eab308; transition: width .6s ease; }
+    .soc-val   { font-size: 10px; font-weight: 700; color: #eab308; width: 30px; text-align: right; }
 
     /* ── Chart ── */
-    .chart-wrap { position: relative; height: 170px; margin-bottom: 6px; }
+    .chart-wrap {
+      position: relative;
+      height: 155px;
+      margin-bottom: 6px;
+    }
 
     /* ── Footer ── */
-    .footer { display: flex; justify-content: space-between;
-              font-size: 10px; opacity: .45;
-              border-top: 1px solid var(--homey-color-mono-50, #e0e0e0);
-              padding-top: 5px; }
-    .plan-ok   { color: #22c55e; opacity: 1; }
-    .plan-warn { color: #f59e0b; opacity: 1; }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      opacity: .4;
+      border-top: 1px solid rgba(128,128,128,.2);
+      padding-top: 4px;
+    }
+    .plan-ok   { color: #22c55e; opacity: 1 !important; }
+    .plan-warn { color: #f59e0b; opacity: 1 !important; }
   </style>
 </head>
 <body>
@@ -52,41 +95,43 @@
   <!-- Header -->
   <div class="header">
     <span class="title">⚡ HEMS</span>
-    <span class="mode" id="mode">–</span>
+    <span class="mode-badge" id="mode">–</span>
   </div>
 
-  <!-- Battery SoC -->
+  <!-- Live metrics: Solar · Grid · Battery · EV -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-dot" style="background:#22c55e"></div>
+      <div class="metric-label">Zon</div>
+      <div class="metric-val" id="mPv" style="color:#22c55e">–</div>
+    </div>
+    <div class="metric">
+      <div class="metric-dot" id="dotGrid" style="background:#8b5cf6"></div>
+      <div class="metric-label">Net</div>
+      <div class="metric-val" id="mGrid" style="color:#8b5cf6">–</div>
+    </div>
+    <div class="metric">
+      <div class="metric-dot" style="background:#eab308"></div>
+      <div class="metric-label">Accu</div>
+      <div class="metric-val" id="mBat" style="color:#eab308">–</div>
+    </div>
+    <div class="metric">
+      <div class="metric-dot" style="background:#f97316"></div>
+      <div class="metric-label">EV</div>
+      <div class="metric-val" id="mEv" style="color:#f97316">–</div>
+    </div>
+  </div>
+
+  <!-- Battery SoC bar -->
   <div class="soc-row">
-    <span class="soc-label">Accu</span>
+    <span class="soc-label">SoC</span>
     <div class="soc-track"><div class="soc-fill" id="socFill" style="width:0%"></div></div>
     <span class="soc-val" id="socVal">–</span>
   </div>
 
-  <!-- Power rows: Zon · Net · EV -->
-  <div class="power-rows">
-    <div class="prow">
-      <div class="pdot" style="background:#22c55e"></div>
-      <span class="pname">Zon</span>
-      <div class="ptrack"><div class="pfill" id="fillPv"   style="width:0%;background:#22c55e"></div></div>
-      <span class="pval" id="valPv"   style="color:#22c55e">–</span>
-    </div>
-    <div class="prow">
-      <div class="pdot" id="dotGrid" style="background:#8b5cf6"></div>
-      <span class="pname">Net</span>
-      <div class="ptrack"><div class="pfill" id="fillGrid" style="width:0%;background:#8b5cf6"></div></div>
-      <span class="pval" id="valGrid" style="color:#8b5cf6">–</span>
-    </div>
-    <div class="prow">
-      <div class="pdot" style="background:#f97316"></div>
-      <span class="pname">EV</span>
-      <div class="ptrack"><div class="pfill" id="fillEv"   style="width:0%;background:#f97316"></div></div>
-      <span class="pval" id="valEv"   style="color:#f97316">–</span>
-    </div>
-  </div>
-
-  <!-- History chart -->
+  <!-- 24-hour chart -->
   <div class="chart-wrap">
-    <canvas id="histChart"></canvas>
+    <canvas id="dayChart"></canvas>
   </div>
 
   <!-- Footer -->
@@ -98,166 +143,285 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script>
     /* ── Constants ── */
-    const MAX_PTS  = 30;   // ~30 min history at 60 s polling
-    const POLL_MS  = 60000;
-    const MAX_W    = 12000; // reference for bar width calc
+    const POLL_MS   = 60_000;
+    const HOURS     = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 
     const MODE_LABELS = {
       auto: 'Auto', battery_charge: '↑ Laden', solar_surplus: '☀ Overschot',
       battery_discharge: '↓ Ontladen', grid_import: '⚡ Net', idle: '–',
     };
 
-    /* ── Rolling history buffers ── */
-    const hist = { labels: [], pv: [], grid: [], ev: [] };
-
-    /* ── Chart instance ── */
-    let chart = null;
-
     /* ── Helpers ── */
     function $id(id) { return document.getElementById(id); }
-
-    function set(id, val) {
-      const el = $id(id);
-      if (el) el.textContent = val;
-    }
+    function set(id, val) { const el = $id(id); if (el) el.textContent = val; }
 
     function fmtW(w) {
+      if (w == null || w === 0) return '0';
+      const a = Math.abs(w);
+      return a >= 950 ? (w / 1000).toFixed(1) + 'k' : Math.round(w) + '';
+    }
+    function fmtWFull(w) {
       if (w == null) return '–';
       const a = Math.abs(w);
-      return a >= 1000 ? (w / 1000).toFixed(1) + ' kW' : Math.round(w) + ' W';
+      return a >= 950 ? (w / 1000).toFixed(1) + ' kW' : Math.round(w) + ' W';
     }
-
-    function barPct(w) {
-      return Math.min(100, Math.max(0, Math.abs(w ?? 0) / MAX_W * 100)).toFixed(1) + '%';
-    }
-
     function timeLbl() {
       const n = new Date();
       return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
     }
 
+    /* ── Chart datasets ── */
+    // actuals[0..23]: { pvW, gridW, batW, evW } | null
+    let actuals = Array(24).fill(null);
+    // live snapshot
+    let live = null;
+    let chart = null;
+
+    /* ── Build chart datasets from actuals ── */
+    function buildDatasets() {
+      // For each hour: split data into named series
+      const pvData        = Array(24).fill(null);
+      const evData        = Array(24).fill(null);
+      const batChgData    = Array(24).fill(null);  // battery charging (positive = charging)
+      const gridImpData   = Array(24).fill(null);  // grid import (positive)
+      const gridExpData   = Array(24).fill(null);  // grid export (negative → flip to positive for area below)
+
+      const nowH = new Date().getHours();
+
+      for (let h = 0; h <= nowH; h++) {
+        const d = actuals[h];
+        if (!d) continue;
+
+        pvData[h]        = Math.max(0, d.pvW ?? 0);
+        evData[h]        = Math.max(0, d.evW ?? 0);
+        batChgData[h]    = Math.max(0, d.batW ?? 0);     // positive = charging from solar
+        // grid: positive = import, negative = export
+        const g = d.gridW ?? 0;
+        gridImpData[h]   = g > 50  ?  g : 0;
+        gridExpData[h]   = g < -50 ? -g : 0;   // stored as positive for display below 0 axis
+      }
+
+      return { pvData, evData, batChgData, gridImpData, gridExpData };
+    }
+
     /* ── Chart init ── */
     function initChart() {
-      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const gridColor  = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
-      const tickColor  = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+      const isDark     = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+      const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      const tickColor  = isDark ? 'rgba(255,255,255,0.3)'  : 'rgba(0,0,0,0.3)';
+      const zeroColor  = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)';
 
-      chart = new Chart($id('histChart').getContext('2d'), {
+      const { pvData, evData, batChgData, gridImpData, gridExpData } = buildDatasets();
+
+      chart = new Chart($id('dayChart').getContext('2d'), {
         type: 'line',
         data: {
-          labels: hist.labels,
+          labels: HOURS,
           datasets: [
-            { label: 'Zon',  data: hist.pv,   borderColor: '#22c55e', backgroundColor: 'transparent',
-              tension: 0.3, borderWidth: 1.8, pointRadius: 1.5, pointHoverRadius: 3 },
-            { label: 'Net',  data: hist.grid, borderColor: '#8b5cf6', backgroundColor: 'transparent',
-              tension: 0.3, borderWidth: 1.8, pointRadius: 1.5, pointHoverRadius: 3 },
-            { label: 'EV',   data: hist.ev,   borderColor: '#f97316', backgroundColor: 'transparent',
-              tension: 0.3, borderWidth: 1.8, pointRadius: 1.5, pointHoverRadius: 3 },
+            /* 1. Solar — big green filled area (base layer) */
+            {
+              label: 'Zon',
+              data: pvData,
+              borderColor: '#22c55e',
+              backgroundColor: 'rgba(34,197,94,0.25)',
+              fill: 'origin',
+              tension: 0.4,
+              borderWidth: 1.8,
+              pointRadius: 0,
+              order: 4,
+            },
+            /* 2. EV charging — orange filled, overlaid */
+            {
+              label: 'EV',
+              data: evData,
+              borderColor: '#f97316',
+              backgroundColor: 'rgba(249,115,22,0.45)',
+              fill: 'origin',
+              tension: 0.3,
+              borderWidth: 1.5,
+              pointRadius: 0,
+              order: 2,
+            },
+            /* 3. Battery charging — yellow filled, overlaid */
+            {
+              label: 'Accu',
+              data: batChgData,
+              borderColor: '#eab308',
+              backgroundColor: 'rgba(234,179,8,0.40)',
+              fill: 'origin',
+              tension: 0.3,
+              borderWidth: 1.5,
+              pointRadius: 0,
+              order: 3,
+            },
+            /* 4. Grid import — purple filled, positive (import from grid) */
+            {
+              label: 'Net↓',
+              data: gridImpData,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139,92,246,0.35)',
+              fill: 'origin',
+              tension: 0.2,
+              borderWidth: 1.5,
+              pointRadius: 0,
+              order: 1,
+            },
+            /* 5. Grid export — teal dashes below 0 (export to grid) */
+            {
+              label: 'Net↑',
+              data: gridExpData.map(v => v ? -v : null),  // show as negative
+              borderColor: '#14b8a6',
+              backgroundColor: 'rgba(20,184,166,0.20)',
+              fill: 'origin',
+              tension: 0.2,
+              borderWidth: 1.2,
+              borderDash: [3, 3],
+              pointRadius: 0,
+              order: 0,
+            },
           ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          animation: { duration: 400 },
+          animation: { duration: 600 },
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: {
               display: true,
               position: 'bottom',
-              labels: { font: { size: 9 }, boxWidth: 9, padding: 8, color: tickColor },
+              labels: {
+                font: { size: 9 }, boxWidth: 8, padding: 7,
+                color: tickColor,
+                filter: item => item.text !== 'Net↑' || true,  // always show all
+              },
             },
             tooltip: {
               bodyFont: { size: 10 },
               callbacks: {
-                label: ctx => ' ' + ctx.dataset.label + ': ' + fmtW(ctx.parsed.y),
+                label: ctx => {
+                  const v = ctx.parsed.y;
+                  if (v == null || v === 0) return null;
+                  const a = Math.abs(v);
+                  const s = a >= 950 ? (v/1000).toFixed(1)+' kW' : Math.round(v)+' W';
+                  return ' ' + ctx.dataset.label + ': ' + s;
+                },
               },
             },
           },
           scales: {
             x: {
-              ticks: { font: { size: 9 }, color: tickColor, maxTicksLimit: 7, maxRotation: 0 },
-              grid:  { color: gridColor },
+              ticks: {
+                font: { size: 8 }, color: tickColor, maxTicksLimit: 8, maxRotation: 0,
+                callback: (_, i) => (i % 3 === 0) ? HOURS[i] : '',
+              },
+              grid: { color: gridColor },
             },
             y: {
               ticks: {
                 font: { size: 9 }, color: tickColor,
-                callback: v => Math.abs(v) >= 1000 ? (v/1000).toFixed(1)+'k' : v,
+                callback: v => Math.abs(v) >= 950 ? (v/1000).toFixed(0)+'k' : v,
               },
               grid: { color: gridColor },
+              border: { color: zeroColor },
             },
           },
         },
       });
     }
 
-    /* ── Push one data point ── */
-    function push(s) {
-      hist.labels.push(timeLbl());
-      hist.pv.push(Math.round(s.pvW   ?? 0));
-      hist.grid.push(Math.round(s.gridW ?? 0));
-      hist.ev.push(Math.round(s.evW   ?? 0));
+    /* ── Patch current hour with live value ── */
+    function patchLive(s) {
+      const h = new Date().getHours();
+      // Merge live into actuals slot so current hour shows
+      const cur = actuals[h] || { n: 0, pvW: 0, gridW: 0, batW: 0, evW: 0 };
+      // Just overwrite with latest live (single-point preview)
+      actuals[h] = {
+        ...cur,
+        pvW:   s.pvW   ?? cur.pvW,
+        gridW: s.gridW ?? cur.gridW,
+        batW:  s.batPowerW ?? cur.batW,
+        evW:   s.evW   ?? cur.evW,
+      };
+    }
 
-      if (hist.labels.length > MAX_PTS) {
-        hist.labels.shift();
-        hist.pv.shift();
-        hist.grid.shift();
-        hist.ev.shift();
+    /* ── Update chart data ── */
+    function updateChart() {
+      if (!chart) return;
+      const { pvData, evData, batChgData, gridImpData, gridExpData } = buildDatasets();
+      chart.data.datasets[0].data = pvData;
+      chart.data.datasets[1].data = evData;
+      chart.data.datasets[2].data = batChgData;
+      chart.data.datasets[3].data = gridImpData;
+      chart.data.datasets[4].data = gridExpData.map(v => v ? -v : null);
+      chart.update('none');
+    }
+
+    /* ── Refresh actuals (24-hour history) ── */
+    async function refreshActuals() {
+      try {
+        const arr = await Homey.api('GET', '/getActuals', {});
+        if (Array.isArray(arr)) actuals = arr;
+      } catch (e) {
+        console.warn('[EMS chart] getActuals failed', e);
       }
     }
 
-    /* ── Main refresh ── */
-    async function refresh() {
+    /* ── Refresh live state ── */
+    async function refreshState() {
       try {
         const s = await Homey.api('GET', '/getState', {});
         if (!s || !s.ready) return;
+        live = s;
 
         /* Mode badge */
-        set('mode', MODE_LABELS[s.mode] || s.mode);
+        set('mode', MODE_LABELS[s.mode] || s.mode || '–');
 
-        /* Battery SoC */
+        /* Metric tiles */
+        const pv   = s.pvW   ?? 0;
+        const gw   = s.gridW ?? 0;
+        const bw   = s.batPowerW ?? 0;
+        const ev   = s.evW   ?? 0;
+
+        // Solar
+        $id('mPv').textContent = fmtWFull(pv);
+
+        // Grid — colour changes with direction
+        const mGrid  = $id('mGrid');
+        const dotG   = $id('dotGrid');
+        if (gw > 50) {
+          mGrid.textContent = '↓ ' + fmtWFull(gw);
+          mGrid.style.color = dotG.style.background = '#ea4335';
+        } else if (gw < -50) {
+          mGrid.textContent = '↑ ' + fmtWFull(Math.abs(gw));
+          mGrid.style.color = dotG.style.background = '#22c55e';
+        } else {
+          mGrid.textContent = '≈ 0';
+          mGrid.style.color = dotG.style.background = '#8b5cf6';
+        }
+
+        // Battery
+        const mBat = $id('mBat');
+        if (bw > 50) {
+          mBat.textContent = '↓ ' + fmtWFull(bw);   // charging (positive = power in)
+        } else if (bw < -50) {
+          mBat.textContent = '↑ ' + fmtWFull(Math.abs(bw));   // discharging
+        } else {
+          mBat.textContent = '≈ 0';
+        }
+
+        // EV
+        set('mEv', s.evCharging ? fmtWFull(ev) : '–');
+
+        /* SoC bar */
         const soc = s.batSoc ?? 0;
         set('socVal', soc.toFixed(0) + '%');
         $id('socFill').style.width = soc + '%';
 
-        /* Power bars */
-        const pv   = s.pvW   ?? 0;
-        const gw   = s.gridW ?? 0;
-        const ev   = s.evW   ?? 0;
-
-        $id('fillPv').style.width   = barPct(pv);
-        $id('fillGrid').style.width = barPct(gw);
-        $id('fillEv').style.width   = barPct(ev);
-
-        set('valPv',   fmtW(pv));
-
-        // Grid: show ↓ import (red tint) or ↑ export (green tint)
-        const gridEl = $id('valGrid');
-        if (gridEl) {
-          if (gw > 50) {
-            gridEl.textContent = '↓ ' + fmtW(gw);
-            gridEl.style.color = '#ea4335';
-            $id('dotGrid').style.background = '#ea4335';
-            $id('fillGrid').style.background = '#ea4335';
-          } else if (gw < -50) {
-            gridEl.textContent = '↑ ' + fmtW(Math.abs(gw));
-            gridEl.style.color = '#22c55e';
-            $id('dotGrid').style.background = '#22c55e';
-            $id('fillGrid').style.background = '#22c55e';
-          } else {
-            gridEl.textContent = fmtW(0);
-            gridEl.style.color = '#8b5cf6';
-            $id('dotGrid').style.background = '#8b5cf6';
-            $id('fillGrid').style.background = '#8b5cf6';
-          }
-        }
-
-        set('valEv', s.evCharging ? fmtW(ev) : '–');
-
         /* Plan status */
-        const plan   = s.plan;
         const planEl = $id('planStatus');
-        if (planEl && plan) {
-          if (plan.prio1Feasible) {
+        if (planEl && s.plan) {
+          if (s.plan.prio1Feasible) {
             planEl.textContent = '✓ Plan haalbaar';
             planEl.className   = 'plan-ok';
           } else {
@@ -269,26 +433,27 @@
         /* Update time */
         set('updAt', timeLbl());
 
-        /* Push to chart */
-        push(s);
-        if (chart) {
-          chart.data.labels          = [...hist.labels];
-          chart.data.datasets[0].data = [...hist.pv];
-          chart.data.datasets[1].data = [...hist.grid];
-          chart.data.datasets[2].data = [...hist.ev];
-          chart.update('none');
-        }
+        /* Patch live into actuals and redraw */
+        patchLive(s);
+        updateChart();
       } catch (e) {
-        console.error('[EMS chart]', e);
+        console.error('[EMS chart] getState failed', e);
       }
     }
 
     /* ── Homey ready ── */
-    function onHomeyReady(Homey) {
+    async function onHomeyReady(Homey) {
       Homey.ready();
+      await refreshActuals();
       initChart();
-      refresh();
-      setInterval(refresh, POLL_MS);
+      await refreshState();
+
+      // Poll state every minute, actuals every 5 minutes
+      setInterval(refreshState, POLL_MS);
+      setInterval(async () => {
+        await refreshActuals();
+        updateChart();
+      }, 5 * POLL_MS);
     }
   </script>
 </body>
