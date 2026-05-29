@@ -321,12 +321,21 @@ class TeslaEvAdapter {
 
   /**
    * Stop EV charging.
+   * @param {boolean} force  When true: bypass _isChargingByEms guard and rate limit.
+   *                         Use for hard rules (peak block, postpone, no-surplus).
    */
-  async stopCharging() {
-    if (!this._isChargingByEms) return; // we didn't start it, don't stop it
-    this.app.log('[Tesla] stopCharging()');
+  async stopCharging(force = false) {
+    if (!force && !this._isChargingByEms) {
+      return; // soft stop: only stop sessions we started
+    }
+    this.app.log(`[Tesla] stopCharging() force=${force}`);
     this._isChargingByEms = false;
-    await this._sendCommand('stop_charging');
+    if (force) {
+      // Hard stop: skip rate limit, execute immediately
+      await this._executeCommand('stop_charging');
+    } else {
+      await this._sendCommand('stop_charging');
+    }
   }
 
   /**

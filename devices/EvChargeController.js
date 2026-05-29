@@ -496,12 +496,12 @@ class EvChargeController {
     switch (action.type) {
 
       case 'stop':
-        // force = true for hard rules (peak block, postpone): stop regardless of who started
-        // force = false for soft stops (no surplus): only stop EMS-owned sessions
-        if (evState.charging && (force || this.tesla._isChargingByEms)) {
-          await this.tesla.stopCharging();
+        // force = true: hard rules (peak block, postpone) — stop regardless of who started,
+        //               bypass rate limiter, send immediately.
+        // force = false: soft stop (no surplus) — only stop EMS-owned sessions.
+        if (evState.charging || force) {
+          await this.tesla.stopCharging(force);
           this._currentTargetA = 0;
-          this.tesla._isChargingByEms = false;
         }
         break;
 
