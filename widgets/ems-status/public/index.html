@@ -5,7 +5,7 @@
     body {
       font-family: var(--homey-font-family, -apple-system, sans-serif);
       background: transparent;
-      padding: 11px 13px 9px;
+      padding: 10px 12px 6px;
       color: var(--homey-text-color, #202124);
     }
 
@@ -14,87 +14,78 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 9px;
-    }
-    .title {
-      font-size: 11px;
-      font-weight: 700;
-      opacity: .5;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-    .feasible-ok   { font-size: 10px; padding: 2px 9px; border-radius: 8px; font-weight: 700;
-                     background: rgba(34,197,94,.13); color: #22c55e; }
-    .feasible-warn { font-size: 10px; padding: 2px 9px; border-radius: 8px; font-weight: 700;
-                     background: rgba(245,158,11,.13); color: #f59e0b; }
-    .feasible-none { font-size: 10px; padding: 2px 9px; border-radius: 8px; font-weight: 700;
-                     background: rgba(128,128,128,.1); color: rgba(128,128,128,.6); }
-
-    /* ── Plan date ── */
-    .plan-date {
-      font-size: 10px;
-      opacity: .4;
       margin-bottom: 8px;
     }
+    .title-wrap { display: flex; flex-direction: column; gap: 1px; }
+    .title      { font-size: 11px; font-weight: 700; opacity: .5; letter-spacing: 1px; text-transform: uppercase; }
+    .subtitle   { font-size: 10px; opacity: .4; }
 
-    /* ── Main metrics ── */
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 5px;
-      margin-bottom: 9px;
-    }
-    .metric {
-      background: rgba(128,128,128,.06);
-      border-radius: 7px;
-      padding: 5px 5px 4px;
-      text-align: center;
-    }
-    .metric-icon  { font-size: 13px; line-height: 1; margin-bottom: 2px; }
-    .metric-label { font-size: 8px; opacity: .45; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 2px; }
-    .metric-val   { font-size: 14px; font-weight: 700; letter-spacing: -.3px; }
-    .metric-sub   { font-size: 9px; opacity: .45; margin-top: 1px; }
+    .badge-ok   { font-size: 10px; padding: 2px 9px; border-radius: 7px; font-weight: 700;
+                  background: rgba(34,197,94,.13); color: #22c55e; }
+    .badge-warn { font-size: 10px; padding: 2px 9px; border-radius: 7px; font-weight: 700;
+                  background: rgba(245,158,11,.13); color: #f59e0b; }
+    .badge-none { font-size: 10px; padding: 2px 9px; border-radius: 7px; font-weight: 700;
+                  background: rgba(128,128,128,.1); color: rgba(128,128,128,.5); }
 
-    /* ── EV window ── */
-    .ev-window {
+    /* ── Summary numbers ── */
+    .summary {
       display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      padding: 5px 7px;
-      border-radius: 7px;
-      background: rgba(249,115,22,.08);
-      margin-bottom: 9px;
+      gap: 10px;
+      margin-bottom: 8px;
     }
-    .ev-window-icon { font-size: 12px; flex-shrink: 0; }
-    .ev-window-text { opacity: .7; flex: 1; }
-    .ev-window-hours { font-weight: 700; color: #f97316; }
+    .sum-item {
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+    }
+    .sum-icon  { font-size: 11px; }
+    .sum-val   { font-size: 16px; font-weight: 700; letter-spacing: -.4px; }
+    .sum-unit  { font-size: 9px; opacity: .5; }
+    .sep       { opacity: .2; align-self: center; font-size: 14px; }
+
+    /* ── Chart ── */
+    .chart-wrap {
+      position: relative;
+      height: 148px;
+      margin-bottom: 5px;
+    }
+
+    /* ── EV window pill ── */
+    .ev-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(249,115,22,.10);
+      color: #f97316;
+      margin-bottom: 6px;
+    }
 
     /* ── No plan ── */
     .no-plan {
-      font-size: 11px;
-      opacity: .4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 160px;
+      gap: 6px;
+      opacity: .35;
+      font-size: 12px;
       text-align: center;
-      padding: 18px 0;
     }
+    .no-plan-icon { font-size: 28px; }
 
     /* ── Footer ── */
     .footer {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      font-size: 9px;
+      font-size: 8px;
       opacity: .35;
       border-top: 1px solid rgba(128,128,128,.15);
-      padding-top: 5px;
-    }
-    .mode-dot {
-      display: inline-block;
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: #22c55e;
-      margin-right: 4px;
-      vertical-align: middle;
+      padding-top: 4px;
     }
   </style>
 </head>
@@ -102,77 +93,253 @@
 
   <!-- Header -->
   <div class="header">
-    <span class="title">📅 Plan morgen</span>
-    <span id="feasBadge" class="feasible-none">–</span>
+    <div class="title-wrap">
+      <span class="title">☀️ EMS Morgen</span>
+      <span class="subtitle" id="planDate">–</span>
+    </div>
+    <span id="feasBadge" class="badge-none">–</span>
   </div>
 
-  <!-- Plan date -->
-  <div class="plan-date" id="planDate">Nog geen plan berekend</div>
-
-  <!-- Main metrics -->
-  <div class="metrics" id="metrics" style="display:none">
-    <div class="metric">
-      <div class="metric-icon">☀️</div>
-      <div class="metric-label">Verwacht</div>
-      <div class="metric-val" id="mPv" style="color:#f59e0b">–</div>
-      <div class="metric-sub">kWh</div>
+  <!-- Summary row -->
+  <div class="summary" id="summary" style="display:none">
+    <div class="sum-item">
+      <span class="sum-icon">☀️</span>
+      <span class="sum-val" id="sTotPv" style="color:#22c55e">–</span>
+      <span class="sum-unit">kWh</span>
     </div>
-    <div class="metric">
-      <div class="metric-icon">🔋</div>
-      <div class="metric-label">Accu nu</div>
-      <div class="metric-val" id="mBat" style="color:#1a73e8">–</div>
-      <div class="metric-sub">kWh vrij</div>
+    <span class="sep">·</span>
+    <div class="sum-item">
+      <span class="sum-icon">🔋</span>
+      <span class="sum-val" id="sBatAvail" style="color:#eab308">–</span>
+      <span class="sum-unit">kWh</span>
     </div>
-    <div class="metric">
-      <div class="metric-icon">🚗</div>
-      <div class="metric-label">EV nodig</div>
-      <div class="metric-val" id="mEv" style="color:#f97316">–</div>
-      <div class="metric-sub">kWh</div>
+    <span class="sep">·</span>
+    <div class="sum-item">
+      <span class="sum-icon">🚗</span>
+      <span class="sum-val" id="sEvNeeded" style="color:#f97316">–</span>
+      <span class="sum-unit">kWh</span>
     </div>
   </div>
 
-  <!-- EV charge window -->
-  <div class="ev-window" id="evWindow" style="display:none">
-    <span class="ev-window-icon">⚡</span>
-    <span class="ev-window-text" id="evWindowText">EV laadvenster: –</span>
+  <!-- EV charge window pill -->
+  <div class="ev-pill" id="evPill" style="display:none">
+    ⚡ EV laden: <span id="evWindow">–</span>
   </div>
 
-  <!-- No plan placeholder -->
-  <div class="no-plan" id="noPlan">Dagplan wordt elke avond om 22:00 berekend</div>
+  <!-- Forecast chart -->
+  <div class="chart-wrap" id="chartWrap" style="display:none">
+    <canvas id="forecastChart"></canvas>
+  </div>
 
-  <!-- Footer: live mode + hp -->
+  <!-- No-plan placeholder -->
+  <div class="no-plan" id="noPlan">
+    <div class="no-plan-icon">📅</div>
+    <div>Dagplan wordt elke avond om 22:00 berekend</div>
+  </div>
+
+  <!-- Footer: live mode -->
   <div class="footer">
-    <span><span class="mode-dot" id="modeDot"></span><span id="liveMode">–</span></span>
-    <span id="hpMode"></span>
+    <span id="liveMode">–</span>
+    <span id="calcAt">–</span>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script>
     const MODE_LABELS = {
       auto: 'Auto', battery_charge: '↑ Laden', solar_surplus: '☀ Overschot',
       battery_discharge: '↓ Ontladen', grid_import: '⚡ Net', idle: 'Inactief',
     };
-    const HP_LABELS = { heating: '🔥 Verwarmen', cooling: '❄️ Koelen' };
+    const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2,'0') + ':00');
 
-    function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-    function show(id, vis) { const el = document.getElementById(id); if (el) el.style.display = vis ? '' : 'none'; }
+    function $id(id) { return document.getElementById(id); }
+    function set(id, val) { const el = $id(id); if (el) el.textContent = val; }
+    function show(id, vis) { const el = $id(id); if (el) el.style.display = vis ? '' : 'none'; }
+
     function fmtKwh(v) { return v != null ? (+v).toFixed(1) : '–'; }
-
-    function fmtEvWindow(schedule) {
-      if (!schedule || !schedule.length) return null;
-      // Find consecutive EV charge hours
-      const evHours = schedule
-        .filter(h => h.evAction)
-        .map(h => h.hour ?? schedule.indexOf(h));
-      if (!evHours.length) return null;
-      const first = evHours[0];
-      const last  = evHours[evHours.length - 1];
-      return `${String(first).padStart(2,'0')}:00 – ${String(last + 1).padStart(2,'0')}:00 (${evHours.length}u)`;
-    }
-
     function fmtDate(iso) {
+      if (!iso) return '–';
+      const d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
+    function fmtTime(iso) {
       if (!iso) return '';
       const d = new Date(iso);
-      return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+      return 'berekend ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    function evWindow(schedule) {
+      if (!schedule) return null;
+      const evH = schedule.filter(s => s.evCharging).map(s => s.hour);
+      if (!evH.length) return null;
+      return String(evH[0]).padStart(2,'0') + ':00 – ' +
+             String(evH[evH.length-1]+1).padStart(2,'0') + ':00';
+    }
+
+    let chart = null;
+
+    function buildChart(schedule) {
+      const isDark    = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+      const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      const tickColor = isDark ? 'rgba(255,255,255,0.3)'  : 'rgba(0,0,0,0.3)';
+
+      // Convert kWh/h → W (1 kWh in 1 h = 1 kW = 1000 W)
+      const pvW      = schedule.map(s => Math.round((s.pvKwh     ?? 0) * 1000));
+      const consumW  = schedule.map(s => Math.round((s.consumKwh ?? 0) * 1000));
+      const batChgW  = schedule.map(s =>
+        (s.batAction === 'charge' || s.batAction === 'grid_charge')
+          ? Math.round((s.batDeltaKwh ?? 0) * 1000) : 0);
+      const batDisW  = schedule.map(s =>
+        s.batAction === 'discharge'
+          ? -Math.round((s.batDeltaKwh ?? 0) * 1000) : null);
+      const evW      = schedule.map(s => {
+        if (!s.evCharging) return 0;
+        // EV gets the surplus after battery: max 0
+        const surplus = Math.max(0, (s.pvKwh - s.consumKwh - (s.batDeltaKwh ?? 0)) * 1000);
+        return Math.round(surplus) || 1500; // fallback estimate 1.5 kW
+      });
+      const socLine  = schedule.map(s => s.batSocPct ?? null);
+
+      const ctx = $id('forecastChart').getContext('2d');
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: HOURS,
+          datasets: [
+            /* 1. Solar — big green parabola */
+            {
+              label: 'Zon',
+              data: pvW,
+              borderColor: '#22c55e',
+              backgroundColor: 'rgba(34,197,94,0.20)',
+              fill: 'origin',
+              tension: 0.45,
+              borderWidth: 2,
+              pointRadius: 0,
+              yAxisID: 'yW',
+              order: 5,
+            },
+            /* 2. Expected consumption — gray dashed line */
+            {
+              label: 'Verbruik',
+              data: consumW,
+              borderColor: 'rgba(128,128,128,0.5)',
+              backgroundColor: 'transparent',
+              fill: false,
+              tension: 0.3,
+              borderWidth: 1.2,
+              borderDash: [4,3],
+              pointRadius: 0,
+              yAxisID: 'yW',
+              order: 6,
+            },
+            /* 3. Battery charging — yellow area */
+            {
+              label: 'Accu ↑',
+              data: batChgW,
+              borderColor: '#eab308',
+              backgroundColor: 'rgba(234,179,8,0.35)',
+              fill: 'origin',
+              tension: 0.2,
+              borderWidth: 1.4,
+              pointRadius: 0,
+              yAxisID: 'yW',
+              order: 3,
+            },
+            /* 4. Battery discharging — blue below 0 */
+            {
+              label: 'Accu ↓',
+              data: batDisW,
+              borderColor: '#1a73e8',
+              backgroundColor: 'rgba(26,115,232,0.20)',
+              fill: 'origin',
+              tension: 0.2,
+              borderWidth: 1.4,
+              pointRadius: 0,
+              yAxisID: 'yW',
+              order: 2,
+            },
+            /* 5. EV charging — orange area */
+            {
+              label: 'EV',
+              data: evW,
+              borderColor: '#f97316',
+              backgroundColor: 'rgba(249,115,22,0.38)',
+              fill: 'origin',
+              tension: 0.2,
+              borderWidth: 1.4,
+              pointRadius: 0,
+              yAxisID: 'yW',
+              order: 4,
+            },
+            /* 6. Battery SoC% — thin right-axis line */
+            {
+              label: 'SoC %',
+              data: socLine,
+              borderColor: 'rgba(234,179,8,0.7)',
+              backgroundColor: 'transparent',
+              fill: false,
+              tension: 0.3,
+              borderWidth: 1.2,
+              borderDash: [2,2],
+              pointRadius: 0,
+              yAxisID: 'ySoc',
+              order: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 600 },
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              bodyFont: { size: 9 },
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.parsed.y;
+                  if (v == null || v === 0) return null;
+                  if (ctx.dataset.yAxisID === 'ySoc') return ` SoC: ${v.toFixed(0)}%`;
+                  const s = Math.abs(v) >= 950 ? (v/1000).toFixed(1)+' kW' : Math.round(v)+' W';
+                  return ' ' + ctx.dataset.label + ': ' + s;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                font: { size: 8 }, color: tickColor, maxTicksLimit: 7, maxRotation: 0,
+                callback: (_, i) => (i % 4 === 0) ? HOURS[i] : '',
+              },
+              grid: { color: gridColor },
+            },
+            yW: {
+              type: 'linear',
+              position: 'left',
+              ticks: {
+                font: { size: 8 }, color: tickColor,
+                callback: v => Math.abs(v) >= 950 ? (v/1000).toFixed(0)+'k' : v,
+              },
+              grid: { color: gridColor },
+            },
+            ySoc: {
+              type: 'linear',
+              position: 'right',
+              min: 0, max: 100,
+              ticks: {
+                font: { size: 8 }, color: 'rgba(234,179,8,0.6)',
+                callback: v => v + '%',
+                maxTicksLimit: 5,
+              },
+              grid: { drawOnChartArea: false },
+            },
+          },
+        },
+      });
     }
 
     async function refresh() {
@@ -182,76 +349,61 @@
           Homey.api('GET', '/getPlan', {}),
         ]);
 
-        /* ── Live footer ── */
+        // Live footer
         if (s?.ready) {
-          set('liveMode', MODE_LABELS[s.mode] || s.mode || '–');
-          set('hpMode', HP_LABELS[s.hpMode] || '');
-          // dot colour by mode
-          const dot = document.getElementById('modeDot');
-          if (dot) {
-            const dotColors = {
-              auto: '#22c55e', solar_surplus: '#22c55e', battery_charge: '#1a73e8',
-              battery_discharge: '#f59e0b', grid_import: '#8b5cf6', idle: '#9ca3af',
-            };
-            dot.style.background = dotColors[s.mode] || '#9ca3af';
-          }
+          set('liveMode', 'Nu: ' + (MODE_LABELS[s.mode] || s.mode || '–'));
         }
 
-        /* ── Plan section ── */
-        const hasPlan = plan && plan.summary;
-        show('metrics', hasPlan);
-        show('noPlan', !hasPlan);
+        const hasPlan = plan?.schedule?.length > 0;
+        show('noPlan',   !hasPlan);
+        show('summary',   hasPlan);
+        show('chartWrap', hasPlan);
 
-        if (hasPlan) {
-          const sum = plan.summary;
+        if (!hasPlan) {
+          set('planDate', plan?.date ? 'Morgen · ' + fmtDate(plan.date) : 'Nog geen plan');
+          $id('feasBadge').textContent = '–';
+          $id('feasBadge').className   = 'badge-none';
+          return;
+        }
 
-          // Date
-          set('planDate', 'Morgen · ' + fmtDate(plan.date));
+        const sum = plan.summary;
 
-          // Feasibility badge
-          const badge = document.getElementById('feasBadge');
-          if (badge) {
-            if (sum.prio1Feasible) {
-              badge.textContent = '✓ Haalbaar';
-              badge.className   = 'feasible-ok';
-            } else {
-              badge.textContent = '⚠ Krap';
-              badge.className   = 'feasible-warn';
-            }
-          }
+        // Date + feasibility
+        set('planDate', fmtDate(plan.date));
+        set('calcAt', fmtTime(plan.calculatedAt));
 
-          // Metrics
-          set('mPv',  fmtKwh(sum.totalPvKwh));
-          set('mBat', fmtKwh(sum.batAvailKwh));
-          set('mEv',  fmtKwh(sum.evNeededKwh));
+        const badge = $id('feasBadge');
+        if (badge) {
+          badge.textContent = sum.prio1Feasible ? '✓ Haalbaar' : '⚠ Krap';
+          badge.className   = sum.prio1Feasible ? 'badge-ok' : 'badge-warn';
+        }
 
-          // EV window
-          const evWin = fmtEvWindow(plan.schedule);
-          if (evWin) {
-            set('evWindowText', 'EV laden: ' + evWin);
-            show('evWindow', true);
-          } else if (sum.evNeededKwh > 0) {
-            set('evWindowText', 'EV: geen gepland venster gevonden');
-            show('evWindow', true);
-          } else {
-            show('evWindow', false);
-          }
+        // Summary numbers
+        set('sTotPv',   fmtKwh(sum.totalPvKwh));
+        set('sBatAvail',fmtKwh(sum.batAvailKwh));
+        set('sEvNeeded',fmtKwh(sum.evNeededKwh));
 
+        // EV window
+        const evWin = evWindow(plan.schedule);
+        if (evWin && sum.evNeededKwh > 0) {
+          set('evWindow', evWin);
+          show('evPill', true);
         } else {
-          set('feasBadge', '–');
-          document.getElementById('feasBadge').className = 'feasible-none';
-          set('planDate', 'Nog geen plan — wordt berekend om 22:00');
+          show('evPill', false);
         }
+
+        // Chart
+        buildChart(plan.schedule);
 
       } catch(e) {
-        console.error('[EMS status]', e);
+        console.error('[EMS morgen]', e);
       }
     }
 
     function onHomeyReady(Homey) {
       Homey.ready();
       refresh();
-      setInterval(refresh, 30_000);
+      setInterval(refresh, 60_000);
     }
   </script>
 </body>
