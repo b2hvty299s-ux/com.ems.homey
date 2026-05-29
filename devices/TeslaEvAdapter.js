@@ -45,8 +45,8 @@ const EVSE_STATES = {
   11: 'negotiating',
 };
 
-const MIN_COMMAND_INTERVAL_MS      = 10 * 60 * 1000; // 10 min — start/stop (can wake car)
-const MIN_CURRENT_ADJUST_INTERVAL  =  2 * 60 * 1000; // 2 min  — set_charge_amps (car already awake)
+const MIN_COMMAND_INTERVAL_MS      = 3 * 60 * 1000;  // 3 min — start/stop (was 10 min, reduced)
+const MIN_CURRENT_ADJUST_INTERVAL  = 2 * 60 * 1000;  // 2 min — set_charge_amps (car already awake)
 const WC_POLL_URL             = (ip) => `http://${ip}/api/1/vitals`;
 
 class TeslaEvAdapter {
@@ -313,7 +313,6 @@ class TeslaEvAdapter {
    * Respects rate limit — queues if called too soon after last command.
    */
   async startCharging() {
-    if (this._isChargingByEms) return; // already started by us
     this.app.log('[Tesla] startCharging()');
     this._isChargingByEms = true;
     await this._sendCommand('start_charging');
@@ -321,17 +320,14 @@ class TeslaEvAdapter {
 
   /**
    * Stop EV charging.
-   * @param {boolean} force  When true: bypass _isChargingByEms guard and rate limit.
-   *                         Use for hard rules (peak block, postpone, no-surplus).
+   * @param {boolean} force  When true: bypass rate limit (execute immediately).
+   *                         The EMS always manages charging when a car is present —
+   *                         there is no longer a guard on _isChargingByEms for stops.
    */
   async stopCharging(force = false) {
-    if (!force && !this._isChargingByEms) {
-      return; // soft stop: only stop sessions we started
-    }
     this.app.log(`[Tesla] stopCharging() force=${force}`);
     this._isChargingByEms = false;
     if (force) {
-      // Hard stop: skip rate limit, execute immediately
       await this._executeCommand('stop_charging');
     } else {
       await this._sendCommand('stop_charging');
