@@ -90,7 +90,11 @@ class EmsControllerDevice extends Device {
       const l3 = s.get('pv_peak_kw_l3') ?? 0;
       pvPeakKw  = (l1 + l2 + l3) || (s.get('pv_peak_kw') ?? 5.0);
       pvStrings = (l1 + l2 + l3 > 0)
-        ? [l1, l2, l3].filter(p => p > 0).map(p => ({ peakKw: p }))
+        ? [
+            { peakKw: l1, peakHour: s.get('pv_l1_peak_hour') ?? 13 },
+            { peakKw: l2, peakHour: s.get('pv_l2_peak_hour') ?? 13 },
+            { peakKw: l3, peakHour: s.get('pv_l3_peak_hour') ?? 13 },
+          ].filter(p => p.peakKw > 0)
         : null;
     } else {
       pvPeakKw  = s.get('pv_peak_kw') ?? 5.0;

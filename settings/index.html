@@ -10,6 +10,7 @@
     var NUM_KEYS = [
       'price_import', 'price_export', 'phases', 'max_amps',
       'pv_peak_kw', 'pv_peak_kw_l1', 'pv_peak_kw_l2', 'pv_peak_kw_l3',
+      'pv_l1_peak_hour', 'pv_l2_peak_hour', 'pv_l3_peak_hour',
       'bat_capacity_kwh', 'bat_max_charge_w', 'bat_max_discharge_w',
       'hp_offset_deg', 'ev_capacity_kwh', 'ev_default_soc', 'surplus_threshold',
       'ev_max_current_a', 'ev_min_current_a', 'ev_fixed_current_a', 'ev_target_import_w',
@@ -23,6 +24,7 @@
       'day_ahead_provider', 'day_ahead_api_key',
       'phases', 'max_amps',
       'pv_peak_kw', 'pv_peak_kw_l1', 'pv_peak_kw_l2', 'pv_peak_kw_l3',
+      'pv_l1_peak_hour', 'pv_l2_peak_hour', 'pv_l3_peak_hour',
       'bat_capacity_kwh', 'bat_max_charge_w', 'bat_max_discharge_w',
       'hp_offset_deg', 'ev_capacity_kwh', 'ev_default_soc', 'surplus_threshold',
       'ev_charge_mode', 'ev_max_current_a', 'ev_min_current_a', 'ev_fixed_current_a', 'ev_target_import_w',
@@ -428,6 +430,23 @@
         </div>
       </div>
       <p class="hint" id="pv-total-label">Totaal: 0 kWp</p>
+
+      <label style="margin-top:10px">Piekuur per fase</label>
+      <p class="hint">Het uur waarop elke fase zijn maximale productie heeft. Gebruik dit om oost/west-gerichte panelen correct te modelleren. 13 = zuiden (standaard), 10 = oosten, 15 = westen.</p>
+      <div class="row3">
+        <div class="field">
+          <label>L1 piekuur (0–23)</label>
+          <input type="number" id="pv_l1_peak_hour" value="13" min="6" max="18" step="1" />
+        </div>
+        <div class="field">
+          <label>L2 piekuur (0–23)</label>
+          <input type="number" id="pv_l2_peak_hour" value="13" min="6" max="18" step="1" />
+        </div>
+        <div class="field">
+          <label>L3 piekuur (0–23)</label>
+          <input type="number" id="pv_l3_peak_hour" value="13" min="6" max="18" step="1" />
+        </div>
+      </div>
     </div>
   </div>
 

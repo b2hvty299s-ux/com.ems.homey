@@ -36,15 +36,16 @@ class PvCurve {
    * @param {{ peakKwTotal: number, lat: number, lon: number }} config
    */
   init(config) {
-    // Support both old pvStrings array and new flat peakKwTotal
     if (config.pvStrings && config.pvStrings.length > 0) {
-      this.peakKw = config.pvStrings.reduce((s, str) => s + (str.peakKw || 0), 0);
+      this.pvStrings = config.pvStrings; // [{ peakKw, peakHour? }]
+      this.peakKw    = config.pvStrings.reduce((s, str) => s + (str.peakKw || 0), 0);
     } else {
-      this.peakKw = config.peakKwTotal ?? config.pvPeakKw ?? 5.0;
+      this.pvStrings = null;
+      this.peakKw    = config.peakKwTotal ?? config.pvPeakKw ?? 5.0;
     }
     this.lat = config.lat ?? 52.3;
     this.lon = config.lon ?? 4.9;
-    this.app.log(`[PvCurve] ${this.peakKw} kWp, location: ${this.lat}, ${this.lon}`);
+    this.app.log(`[PvCurve] ${this.peakKw} kWp, ${this.pvStrings?.length ?? 1} strings, location: ${this.lat}, ${this.lon}`);
   }
 
   // ─── Primary: radiation-based curve ──────────────────────────────────────
@@ -62,14 +63,50 @@ class PvCurve {
       return this.generateCurveFallback(day === 'tomorrow' ? this._tomorrow() : new Date());
     }
 
-    const result = [];
-    for (let h = 0; h < 24; h++) {
+    // Build base radiation curve (W/m²) from Open-Meteo data
+    const radiationByHour = Array.from({ length: 24 }, (_, h) => {
       const entry = dayData.hourly.find(e => e.hour === h);
-      const radiationW = entry ? (entry.radiationW ?? 0) : 0;
-      const expectedKw = (radiationW / STC_IRRADIANCE) * this.peakKw * SYSTEM_EFFICIENCY;
-      result.push({ hour: h, expectedKw: Math.max(0, +expectedKw.toFixed(3)) });
+      return entry ? (entry.radiationW ?? 0) : 0;
+    });
+
+    // If no per-string peak hour info: use uniform curve (original behaviour)
+    const strings = this.pvStrings?.filter(s => s.peakKw > 0);
+    if (!strings || strings.length === 0 || strings.every(s => !s.peakHour)) {
+      return radiationByHour.map((rW, h) => ({
+        hour: h,
+        expectedKw: Math.max(0, +((rW / STC_IRRADIANCE) * this.peakKw * SYSTEM_EFFICIENCY).toFixed(3)),
+      }));
     }
-    return result;
+
+    // Per-string curve: each string contributes a Gaussian-weighted fraction of radiation
+    // centred on its specified peak hour. This models east/south/west orientations.
+    const totalDailyRad = radiationByHour.reduce((s, v) => s + v, 0);
+    const result = Array(24).fill(0);
+
+    for (const str of strings) {
+      const peakHour = str.peakHour ?? 13;  // default: south-facing (solar noon ~13:00 NL)
+      const sigma    = 3.0;                  // spread ≈ 6 h half-width
+
+      // Gaussian weight for this string across the day
+      const weights = Array.from({ length: 24 }, (_, h) =>
+        Math.exp(-((h - peakHour) ** 2) / (2 * sigma ** 2))
+      );
+      const wSum = weights.reduce((s, v) => s + v, 0);
+
+      for (let h = 0; h < 24; h++) {
+        // String's hourly fraction of global radiation, shaped by its peak hour
+        const fraction = wSum > 0 ? weights[h] / wSum : 1 / 24;
+        // Scale by string's share of total daily radiation energy
+        const stringRadW = totalDailyRad > 0
+          ? radiationByHour[h] * (str.peakKw / this.peakKw) + // proportional base
+            (totalDailyRad / 24) * (fraction - 1 / 24) * str.peakKw / this.peakKw * 2
+          : 0;
+        const expectedKw = Math.max(0, (stringRadW / STC_IRRADIANCE) * str.peakKw * SYSTEM_EFFICIENCY);
+        result[h] += expectedKw;
+      }
+    }
+
+    return result.map((kw, h) => ({ hour: h, expectedKw: +kw.toFixed(3) }));
   }
 
   /**

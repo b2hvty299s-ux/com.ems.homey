@@ -109,10 +109,15 @@ class PlanningEngine {
           }
         }
 
+        const currentSoc = await this._getEvSoc();
         if (trip) {
-          const currentSoc = await this._getEvSoc();
-          const targetSoc  = trip.targetSoc;
-          evNeededKwh = Math.max(0, evConfig.capacityKwh * (targetSoc - currentSoc) / 100);
+          // Trip planned: charge to trip's target SoC
+          evNeededKwh = Math.max(0, evConfig.capacityKwh * (trip.targetSoc - currentSoc) / 100);
+        } else {
+          // No trip: still plan to top up to default SoC from solar surplus.
+          // This ensures the plan shows EV charging during sunny hours even without a trip.
+          const defaultSoc = this.homey.settings.get('ev_default_soc') ?? 80;
+          evNeededKwh = Math.max(0, evConfig.capacityKwh * (defaultSoc - currentSoc) / 100);
         }
       }
 
