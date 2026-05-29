@@ -5,117 +5,253 @@
     body {
       font-family: var(--homey-font-family, -apple-system, sans-serif);
       background: transparent;
-      padding: 12px;
+      padding: 11px 13px 9px;
       color: var(--homey-text-color, #202124);
     }
-    .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .title { font-size: 13px; font-weight: 600; opacity: .6; letter-spacing: 1px; }
-    .mode { font-size: 11px; padding: 2px 10px; border-radius: 10px;
-            background: var(--homey-color-blue-light, #e8f0fe);
-            color: var(--homey-color-blue, #1a73e8); font-weight: 600; }
-    .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
-    .metric .label { font-size: 10px; opacity: .55; text-transform: uppercase; letter-spacing: .5px; }
-    .metric .value { font-size: 20px; font-weight: 700; line-height: 1.2; }
-    .metric .sub   { font-size: 10px; opacity: .5; }
-    .solar  { color: #f59e0b; }
-    .bat    { color: var(--homey-color-blue, #1a73e8); }
-    .grid-exp { color: #34a853; }
-    .grid-imp { color: #ea4335; }
-    .bar-wrap { width: 100%; height: 5px; border-radius: 3px;
-                background: var(--homey-color-mono-50, #e0e0e0); margin-top: 3px; }
-    .bar-fill { height: 100%; border-radius: 3px;
-                background: var(--homey-color-blue, #1a73e8); }
-    .bottom { font-size: 11px; opacity: .55; border-top: 1px solid var(--homey-color-mono-50, #e0e0e0);
-              padding-top: 8px; display: flex; justify-content: space-between; }
-    .plan-ok  { color: #34a853; }
-    .plan-warn { color: #f59e0b; }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 9px;
+    }
+    .title {
+      font-size: 11px;
+      font-weight: 700;
+      opacity: .5;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .feasible-ok   { font-size: 10px; padding: 2px 9px; border-radius: 8px; font-weight: 700;
+                     background: rgba(34,197,94,.13); color: #22c55e; }
+    .feasible-warn { font-size: 10px; padding: 2px 9px; border-radius: 8px; font-weight: 700;
+                     background: rgba(245,158,11,.13); color: #f59e0b; }
+    .feasible-none { font-size: 10px; padding: 2px 9px; border-radius: 8px; font-weight: 700;
+                     background: rgba(128,128,128,.1); color: rgba(128,128,128,.6); }
+
+    /* ── Plan date ── */
+    .plan-date {
+      font-size: 10px;
+      opacity: .4;
+      margin-bottom: 8px;
+    }
+
+    /* ── Main metrics ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      margin-bottom: 9px;
+    }
+    .metric {
+      background: rgba(128,128,128,.06);
+      border-radius: 7px;
+      padding: 5px 5px 4px;
+      text-align: center;
+    }
+    .metric-icon  { font-size: 13px; line-height: 1; margin-bottom: 2px; }
+    .metric-label { font-size: 8px; opacity: .45; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 2px; }
+    .metric-val   { font-size: 14px; font-weight: 700; letter-spacing: -.3px; }
+    .metric-sub   { font-size: 9px; opacity: .45; margin-top: 1px; }
+
+    /* ── EV window ── */
+    .ev-window {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      padding: 5px 7px;
+      border-radius: 7px;
+      background: rgba(249,115,22,.08);
+      margin-bottom: 9px;
+    }
+    .ev-window-icon { font-size: 12px; flex-shrink: 0; }
+    .ev-window-text { opacity: .7; flex: 1; }
+    .ev-window-hours { font-weight: 700; color: #f97316; }
+
+    /* ── No plan ── */
+    .no-plan {
+      font-size: 11px;
+      opacity: .4;
+      text-align: center;
+      padding: 18px 0;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      opacity: .35;
+      border-top: 1px solid rgba(128,128,128,.15);
+      padding-top: 5px;
+    }
+    .mode-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
-  <div class="top">
-    <div class="title">⚡ EMS</div>
-    <div class="mode" id="mode">–</div>
+
+  <!-- Header -->
+  <div class="header">
+    <span class="title">📅 Plan morgen</span>
+    <span id="feasBadge" class="feasible-none">–</span>
   </div>
 
-  <div class="metrics">
+  <!-- Plan date -->
+  <div class="plan-date" id="planDate">Nog geen plan berekend</div>
+
+  <!-- Main metrics -->
+  <div class="metrics" id="metrics" style="display:none">
     <div class="metric">
-      <div class="label">Solar</div>
-      <div class="value solar" id="pvW">–</div>
-      <div class="sub" id="pvSub">–</div>
+      <div class="metric-icon">☀️</div>
+      <div class="metric-label">Verwacht</div>
+      <div class="metric-val" id="mPv" style="color:#f59e0b">–</div>
+      <div class="metric-sub">kWh</div>
     </div>
     <div class="metric">
-      <div class="label">Battery</div>
-      <div class="value bat" id="batSoc">–</div>
-      <div class="bar-wrap"><div class="bar-fill" id="batBar" style="width:0%"></div></div>
+      <div class="metric-icon">🔋</div>
+      <div class="metric-label">Accu nu</div>
+      <div class="metric-val" id="mBat" style="color:#1a73e8">–</div>
+      <div class="metric-sub">kWh vrij</div>
     </div>
     <div class="metric">
-      <div class="label">Grid</div>
-      <div class="value" id="gridW">–</div>
-      <div class="sub" id="gridSub">–</div>
+      <div class="metric-icon">🚗</div>
+      <div class="metric-label">EV nodig</div>
+      <div class="metric-val" id="mEv" style="color:#f97316">–</div>
+      <div class="metric-sub">kWh</div>
     </div>
   </div>
 
-  <div class="bottom">
-    <span id="planStatus">Plan: –</span>
-    <span id="hpMode">–</span>
+  <!-- EV charge window -->
+  <div class="ev-window" id="evWindow" style="display:none">
+    <span class="ev-window-icon">⚡</span>
+    <span class="ev-window-text" id="evWindowText">EV laadvenster: –</span>
+  </div>
+
+  <!-- No plan placeholder -->
+  <div class="no-plan" id="noPlan">Dagplan wordt elke avond om 22:00 berekend</div>
+
+  <!-- Footer: live mode + hp -->
+  <div class="footer">
+    <span><span class="mode-dot" id="modeDot"></span><span id="liveMode">–</span></span>
+    <span id="hpMode"></span>
   </div>
 
   <script>
     const MODE_LABELS = {
       auto: 'Auto', battery_charge: '↑ Laden', solar_surplus: '☀ Overschot',
-      battery_discharge: '↓ Ontladen', grid_import: '⚡ Net', idle: '–',
+      battery_discharge: '↓ Ontladen', grid_import: '⚡ Net', idle: 'Inactief',
     };
+    const HP_LABELS = { heating: '🔥 Verwarmen', cooling: '❄️ Koelen' };
 
-    function fmtW(w) {
-      if (w == null) return '–';
-      return w >= 1000 ? (w/1000).toFixed(1)+'kW' : Math.round(w)+'W';
+    function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+    function show(id, vis) { const el = document.getElementById(id); if (el) el.style.display = vis ? '' : 'none'; }
+    function fmtKwh(v) { return v != null ? (+v).toFixed(1) : '–'; }
+
+    function fmtEvWindow(schedule) {
+      if (!schedule || !schedule.length) return null;
+      // Find consecutive EV charge hours
+      const evHours = schedule
+        .filter(h => h.evAction)
+        .map(h => h.hour ?? schedule.indexOf(h));
+      if (!evHours.length) return null;
+      const first = evHours[0];
+      const last  = evHours[evHours.length - 1];
+      return `${String(first).padStart(2,'0')}:00 – ${String(last + 1).padStart(2,'0')}:00 (${evHours.length}u)`;
     }
 
-    function set(id, val) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = val;
+    function fmtDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     }
 
     async function refresh() {
       try {
-        const s = await Homey.api('GET', '/getState', {});
-        if (!s || !s.ready) return;
+        const [s, plan] = await Promise.all([
+          Homey.api('GET', '/getState', {}),
+          Homey.api('GET', '/getPlan', {}),
+        ]);
 
-        set('mode', MODE_LABELS[s.mode] || s.mode);
-        set('pvW',  fmtW(s.pvW));
-        set('pvSub', s.pvKwhToday != null ? (s.pvKwhToday.toFixed(1)+' kWh') : '–');
-
-        const soc = s.batSoc ?? 0;
-        set('batSoc', soc.toFixed(0)+'%');
-        const bar = document.getElementById('batBar');
-        if (bar) bar.style.width = soc+'%';
-
-        const gw = s.gridW ?? 0;
-        const gridEl = document.getElementById('gridW');
-        if (gridEl) {
-          gridEl.textContent = fmtW(Math.abs(gw));
-          gridEl.className = 'value ' + (gw < -50 ? 'grid-exp' : gw > 50 ? 'grid-imp' : 'bat');
-        }
-        set('gridSub', gw < -50 ? '↑ export' : gw > 50 ? '↓ import' : 'balans');
-
-        const plan = s.plan;
-        const planEl = document.getElementById('planStatus');
-        if (planEl && plan) {
-          planEl.textContent = plan.prio1Feasible ? '✓ Plan haalbaar' : '⚠ Plan krap';
-          planEl.className = plan.prio1Feasible ? 'plan-ok' : 'plan-warn';
+        /* ── Live footer ── */
+        if (s?.ready) {
+          set('liveMode', MODE_LABELS[s.mode] || s.mode || '–');
+          set('hpMode', HP_LABELS[s.hpMode] || '');
+          // dot colour by mode
+          const dot = document.getElementById('modeDot');
+          if (dot) {
+            const dotColors = {
+              auto: '#22c55e', solar_surplus: '#22c55e', battery_charge: '#1a73e8',
+              battery_discharge: '#f59e0b', grid_import: '#8b5cf6', idle: '#9ca3af',
+            };
+            dot.style.background = dotColors[s.mode] || '#9ca3af';
+          }
         }
 
-        const hpLabels = { heating: '🔥 Verwarmen', cooling: '❄️ Koelen' };
-        set('hpMode', hpLabels[s.hpMode] || '');
+        /* ── Plan section ── */
+        const hasPlan = plan && plan.summary;
+        show('metrics', hasPlan);
+        show('noPlan', !hasPlan);
+
+        if (hasPlan) {
+          const sum = plan.summary;
+
+          // Date
+          set('planDate', 'Morgen · ' + fmtDate(plan.date));
+
+          // Feasibility badge
+          const badge = document.getElementById('feasBadge');
+          if (badge) {
+            if (sum.prio1Feasible) {
+              badge.textContent = '✓ Haalbaar';
+              badge.className   = 'feasible-ok';
+            } else {
+              badge.textContent = '⚠ Krap';
+              badge.className   = 'feasible-warn';
+            }
+          }
+
+          // Metrics
+          set('mPv',  fmtKwh(sum.totalPvKwh));
+          set('mBat', fmtKwh(sum.batAvailKwh));
+          set('mEv',  fmtKwh(sum.evNeededKwh));
+
+          // EV window
+          const evWin = fmtEvWindow(plan.schedule);
+          if (evWin) {
+            set('evWindowText', 'EV laden: ' + evWin);
+            show('evWindow', true);
+          } else if (sum.evNeededKwh > 0) {
+            set('evWindowText', 'EV: geen gepland venster gevonden');
+            show('evWindow', true);
+          } else {
+            show('evWindow', false);
+          }
+
+        } else {
+          set('feasBadge', '–');
+          document.getElementById('feasBadge').className = 'feasible-none';
+          set('planDate', 'Nog geen plan — wordt berekend om 22:00');
+        }
+
       } catch(e) {
-        console.error('EMS widget error', e);
+        console.error('[EMS status]', e);
       }
     }
 
     function onHomeyReady(Homey) {
       Homey.ready();
       refresh();
-      setInterval(refresh, 15000);
+      setInterval(refresh, 30_000);
     }
   </script>
 </body>

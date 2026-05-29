@@ -6,7 +6,7 @@
     body {
       font-family: var(--homey-font-family, -apple-system, sans-serif);
       background: transparent;
-      padding: 10px 12px 6px;
+      padding: 9px 11px 5px;
       color: var(--homey-text-color, #202124);
     }
 
@@ -15,75 +15,44 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 7px;
     }
-    .title  { font-size: 11px; font-weight: 700; opacity: .5; letter-spacing: 1px; text-transform: uppercase; }
-    .mode-badge {
-      font-size: 10px; padding: 2px 10px; border-radius: 8px;
-      background: rgba(26,115,232,.13);
-      color: var(--homey-color-blue, #1a73e8);
-      font-weight: 700;
-    }
+    .title      { font-size: 10px; font-weight: 700; opacity: .45; letter-spacing: 1px; text-transform: uppercase; }
+    .mode-badge { font-size: 9px; padding: 2px 8px; border-radius: 7px; font-weight: 700;
+                  background: rgba(26,115,232,.12); color: var(--homey-color-blue, #1a73e8); }
 
-    /* ── Live metrics row ── */
+    /* ── Metrics row — 4 tiles in one line ── */
     .metrics {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      margin-bottom: 10px;
+      gap: 4px;
+      margin-bottom: 7px;
     }
     .metric {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: rgba(128,128,128,.07);
-      border-radius: 8px;
-      padding: 5px 4px 4px;
+      background: rgba(128,128,128,.06);
+      border-radius: 6px;
+      padding: 4px 3px 3px;
+      text-align: center;
     }
-    .metric-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      margin-bottom: 3px;
-    }
-    .metric-label {
-      font-size: 9px;
-      opacity: .5;
-      letter-spacing: .3px;
-      text-transform: uppercase;
-      margin-bottom: 2px;
-    }
-    .metric-val {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: -.2px;
-    }
-
-    /* ── SoC bar ── */
-    .soc-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin-bottom: 8px;
-    }
-    .soc-label { font-size: 9px; opacity: .45; text-transform: uppercase; letter-spacing: .4px; width: 26px; }
-    .soc-track { flex: 1; height: 4px; border-radius: 2px; background: rgba(128,128,128,.2); }
-    .soc-fill  { height: 100%; border-radius: 2px; background: #eab308; transition: width .6s ease; }
-    .soc-val   { font-size: 10px; font-weight: 700; color: #eab308; width: 30px; text-align: right; }
+    .metric-dot   { width: 5px; height: 5px; border-radius: 50%; margin: 0 auto 2px; }
+    .metric-label { font-size: 8px; opacity: .45; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 1px; }
+    .metric-val   { font-size: 11px; font-weight: 700; }
+    .metric-sub   { font-size: 8px; opacity: .4; margin-top: 1px; }
 
     /* ── Chart ── */
     .chart-wrap {
       position: relative;
-      height: 155px;
-      margin-bottom: 6px;
+      height: 128px;
+      margin-bottom: 5px;
     }
 
     /* ── Footer ── */
     .footer {
       display: flex;
       justify-content: space-between;
-      font-size: 9px;
-      opacity: .4;
-      border-top: 1px solid rgba(128,128,128,.2);
+      font-size: 8px;
+      opacity: .35;
+      border-top: 1px solid rgba(128,128,128,.15);
       padding-top: 4px;
     }
     .plan-ok   { color: #22c55e; opacity: 1 !important; }
@@ -94,11 +63,11 @@
 
   <!-- Header -->
   <div class="header">
-    <span class="title">⚡ HEMS</span>
+    <span class="title">⚡ Vandaag</span>
     <span class="mode-badge" id="mode">–</span>
   </div>
 
-  <!-- Live metrics: Solar · Grid · Battery · EV -->
+  <!-- Metrics: Zon · Net · Accu (+ SoC) · EV -->
   <div class="metrics">
     <div class="metric">
       <div class="metric-dot" style="background:#22c55e"></div>
@@ -114,19 +83,13 @@
       <div class="metric-dot" style="background:#eab308"></div>
       <div class="metric-label">Accu</div>
       <div class="metric-val" id="mBat" style="color:#eab308">–</div>
+      <div class="metric-sub" id="mSoc">–%</div>
     </div>
     <div class="metric">
       <div class="metric-dot" style="background:#f97316"></div>
       <div class="metric-label">EV</div>
       <div class="metric-val" id="mEv" style="color:#f97316">–</div>
     </div>
-  </div>
-
-  <!-- Battery SoC bar -->
-  <div class="soc-row">
-    <span class="soc-label">SoC</span>
-    <div class="soc-track"><div class="soc-fill" id="socFill" style="width:0%"></div></div>
-    <span class="soc-val" id="socVal">–</span>
   </div>
 
   <!-- 24-hour chart -->
@@ -136,27 +99,25 @@
 
   <!-- Footer -->
   <div class="footer">
-    <span id="planStatus">Plan: –</span>
+    <span id="planStatus">–</span>
     <span id="updAt">–</span>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script>
-    /* ── Constants ── */
-    const POLL_MS   = 60_000;
-    const HOURS     = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
+    const POLL_MS = 60_000;
+    const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0') + ':00');
 
     const MODE_LABELS = {
       auto: 'Auto', battery_charge: '↑ Laden', solar_surplus: '☀ Overschot',
       battery_discharge: '↓ Ontladen', grid_import: '⚡ Net', idle: '–',
     };
 
-    /* ── Helpers ── */
     function $id(id) { return document.getElementById(id); }
     function set(id, val) { const el = $id(id); if (el) el.textContent = val; }
 
     function fmtW(w) {
-      if (w == null || w === 0) return '0';
+      if (w == null) return '–';
       const a = Math.abs(w);
       return a >= 950 ? (w / 1000).toFixed(1) + 'k' : Math.round(w) + '';
     }
@@ -170,46 +131,34 @@
       return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
     }
 
-    /* ── Chart datasets ── */
-    // actuals[0..23]: { pvW, gridW, batW, evW } | null
     let actuals = Array(24).fill(null);
-    // live snapshot
-    let live = null;
     let chart = null;
 
-    /* ── Build chart datasets from actuals ── */
     function buildDatasets() {
-      // For each hour: split data into named series
-      const pvData        = Array(24).fill(null);
-      const evData        = Array(24).fill(null);
-      const batChgData    = Array(24).fill(null);  // battery charging (positive = charging)
-      const gridImpData   = Array(24).fill(null);  // grid import (positive)
-      const gridExpData   = Array(24).fill(null);  // grid export (negative → flip to positive for area below)
-
+      const pvData      = Array(24).fill(null);
+      const evData      = Array(24).fill(null);
+      const batChgData  = Array(24).fill(null);
+      const gridImpData = Array(24).fill(null);
+      const gridExpData = Array(24).fill(null);
       const nowH = new Date().getHours();
 
       for (let h = 0; h <= nowH; h++) {
         const d = actuals[h];
         if (!d) continue;
-
-        pvData[h]        = Math.max(0, d.pvW ?? 0);
-        evData[h]        = Math.max(0, d.evW ?? 0);
-        batChgData[h]    = Math.max(0, d.batW ?? 0);     // positive = charging from solar
-        // grid: positive = import, negative = export
+        pvData[h]      = Math.max(0, d.pvW   ?? 0);
+        evData[h]      = Math.max(0, d.evW   ?? 0);
+        batChgData[h]  = Math.max(0, d.batW  ?? 0);
         const g = d.gridW ?? 0;
-        gridImpData[h]   = g > 50  ?  g : 0;
-        gridExpData[h]   = g < -50 ? -g : 0;   // stored as positive for display below 0 axis
+        gridImpData[h] = g >  50 ?  g : 0;
+        gridExpData[h] = g < -50 ? -g : 0;
       }
-
       return { pvData, evData, batChgData, gridImpData, gridExpData };
     }
 
-    /* ── Chart init ── */
     function initChart() {
-      const isDark     = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-      const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-      const tickColor  = isDark ? 'rgba(255,255,255,0.3)'  : 'rgba(0,0,0,0.3)';
-      const zeroColor  = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)';
+      const isDark    = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+      const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      const tickColor = isDark ? 'rgba(255,255,255,0.3)'  : 'rgba(0,0,0,0.3)';
 
       const { pvData, evData, batChgData, gridImpData, gridExpData } = buildDatasets();
 
@@ -218,92 +167,27 @@
         data: {
           labels: HOURS,
           datasets: [
-            /* 1. Solar — big green filled area (base layer) */
-            {
-              label: 'Zon',
-              data: pvData,
-              borderColor: '#22c55e',
-              backgroundColor: 'rgba(34,197,94,0.25)',
-              fill: 'origin',
-              tension: 0.4,
-              borderWidth: 1.8,
-              pointRadius: 0,
-              order: 4,
-            },
-            /* 2. EV charging — orange filled, overlaid */
-            {
-              label: 'EV',
-              data: evData,
-              borderColor: '#f97316',
-              backgroundColor: 'rgba(249,115,22,0.45)',
-              fill: 'origin',
-              tension: 0.3,
-              borderWidth: 1.5,
-              pointRadius: 0,
-              order: 2,
-            },
-            /* 3. Battery charging — yellow filled, overlaid */
-            {
-              label: 'Accu',
-              data: batChgData,
-              borderColor: '#eab308',
-              backgroundColor: 'rgba(234,179,8,0.40)',
-              fill: 'origin',
-              tension: 0.3,
-              borderWidth: 1.5,
-              pointRadius: 0,
-              order: 3,
-            },
-            /* 4. Grid import — purple filled, positive (import from grid) */
-            {
-              label: 'Net↓',
-              data: gridImpData,
-              borderColor: '#8b5cf6',
-              backgroundColor: 'rgba(139,92,246,0.35)',
-              fill: 'origin',
-              tension: 0.2,
-              borderWidth: 1.5,
-              pointRadius: 0,
-              order: 1,
-            },
-            /* 5. Grid export — teal dashes below 0 (export to grid) */
-            {
-              label: 'Net↑',
-              data: gridExpData.map(v => v ? -v : null),  // show as negative
-              borderColor: '#14b8a6',
-              backgroundColor: 'rgba(20,184,166,0.20)',
-              fill: 'origin',
-              tension: 0.2,
-              borderWidth: 1.2,
-              borderDash: [3, 3],
-              pointRadius: 0,
-              order: 0,
-            },
+            { label: 'Zon',  data: pvData,      borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.22)',   fill: 'origin', tension: 0.4, borderWidth: 1.6, pointRadius: 0, order: 4 },
+            { label: 'EV',   data: evData,      borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.40)',  fill: 'origin', tension: 0.3, borderWidth: 1.4, pointRadius: 0, order: 2 },
+            { label: 'Accu', data: batChgData,  borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.35)',   fill: 'origin', tension: 0.3, borderWidth: 1.4, pointRadius: 0, order: 3 },
+            { label: 'Net↓', data: gridImpData, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.30)',  fill: 'origin', tension: 0.2, borderWidth: 1.4, pointRadius: 0, order: 1 },
+            { label: 'Net↑', data: gridExpData.map(v => v ? -v : null), borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.18)', fill: 'origin', tension: 0.2, borderWidth: 1.2, borderDash: [3,3], pointRadius: 0, order: 0 },
           ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          animation: { duration: 600 },
+          animation: { duration: 500 },
           interaction: { mode: 'index', intersect: false },
           plugins: {
-            legend: {
-              display: true,
-              position: 'bottom',
-              labels: {
-                font: { size: 9 }, boxWidth: 8, padding: 7,
-                color: tickColor,
-                filter: item => item.text !== 'Net↑' || true,  // always show all
-              },
-            },
+            legend: { display: false },   // ← geen legenda = ruimtebesparing
             tooltip: {
-              bodyFont: { size: 10 },
+              bodyFont: { size: 9 },
               callbacks: {
                 label: ctx => {
                   const v = ctx.parsed.y;
-                  if (v == null || v === 0) return null;
-                  const a = Math.abs(v);
-                  const s = a >= 950 ? (v/1000).toFixed(1)+' kW' : Math.round(v)+' W';
+                  if (!v) return null;
+                  const s = Math.abs(v) >= 950 ? (v/1000).toFixed(1)+' kW' : Math.round(v)+' W';
                   return ' ' + ctx.dataset.label + ': ' + s;
                 },
               },
@@ -312,40 +196,35 @@
           scales: {
             x: {
               ticks: {
-                font: { size: 8 }, color: tickColor, maxTicksLimit: 8, maxRotation: 0,
-                callback: (_, i) => (i % 3 === 0) ? HOURS[i] : '',
+                font: { size: 8 }, color: tickColor, maxTicksLimit: 7, maxRotation: 0,
+                callback: (_, i) => (i % 4 === 0) ? HOURS[i] : '',
               },
               grid: { color: gridColor },
             },
             y: {
               ticks: {
-                font: { size: 9 }, color: tickColor,
+                font: { size: 8 }, color: tickColor,
                 callback: v => Math.abs(v) >= 950 ? (v/1000).toFixed(0)+'k' : v,
               },
               grid: { color: gridColor },
-              border: { color: zeroColor },
             },
           },
         },
       });
     }
 
-    /* ── Patch current hour with live value ── */
     function patchLive(s) {
       const h = new Date().getHours();
-      // Merge live into actuals slot so current hour shows
-      const cur = actuals[h] || { n: 0, pvW: 0, gridW: 0, batW: 0, evW: 0 };
-      // Just overwrite with latest live (single-point preview)
+      const cur = actuals[h] || { pvW: 0, gridW: 0, batW: 0, evW: 0 };
       actuals[h] = {
         ...cur,
-        pvW:   s.pvW   ?? cur.pvW,
-        gridW: s.gridW ?? cur.gridW,
-        batW:  s.batPowerW ?? cur.batW,
-        evW:   s.evW   ?? cur.evW,
+        pvW:   s.pvW        ?? cur.pvW,
+        gridW: s.gridW      ?? cur.gridW,
+        batW:  s.batPowerW  ?? cur.batW,
+        evW:   s.evW        ?? cur.evW,
       };
     }
 
-    /* ── Update chart data ── */
     function updateChart() {
       if (!chart) return;
       const { pvData, evData, batChgData, gridImpData, gridExpData } = buildDatasets();
@@ -357,38 +236,32 @@
       chart.update('none');
     }
 
-    /* ── Refresh actuals (24-hour history) ── */
     async function refreshActuals() {
       try {
         const arr = await Homey.api('GET', '/getActuals', {});
         if (Array.isArray(arr)) actuals = arr;
-      } catch (e) {
-        console.warn('[EMS chart] getActuals failed', e);
-      }
+      } catch(e) { console.warn('[EMS chart] getActuals', e); }
     }
 
-    /* ── Refresh live state ── */
     async function refreshState() {
       try {
         const s = await Homey.api('GET', '/getState', {});
-        if (!s || !s.ready) return;
-        live = s;
+        if (!s?.ready) return;
 
-        /* Mode badge */
         set('mode', MODE_LABELS[s.mode] || s.mode || '–');
 
-        /* Metric tiles */
-        const pv   = s.pvW   ?? 0;
-        const gw   = s.gridW ?? 0;
-        const bw   = s.batPowerW ?? 0;
-        const ev   = s.evW   ?? 0;
+        const pv  = s.pvW      ?? 0;
+        const gw  = s.gridW    ?? 0;
+        const bw  = s.batPowerW ?? 0;
+        const ev  = s.evW      ?? 0;
+        const soc = s.batSoc   ?? 0;
 
         // Solar
         $id('mPv').textContent = fmtWFull(pv);
 
-        // Grid — colour changes with direction
-        const mGrid  = $id('mGrid');
-        const dotG   = $id('dotGrid');
+        // Grid
+        const mGrid = $id('mGrid');
+        const dotG  = $id('dotGrid');
         if (gw > 50) {
           mGrid.textContent = '↓ ' + fmtWFull(gw);
           mGrid.style.color = dotG.style.background = '#ea4335';
@@ -400,60 +273,37 @@
           mGrid.style.color = dotG.style.background = '#8b5cf6';
         }
 
-        // Battery
+        // Battery + SoC (combined in one tile)
         const mBat = $id('mBat');
-        if (bw > 50) {
-          mBat.textContent = '↓ ' + fmtWFull(bw);   // charging (positive = power in)
-        } else if (bw < -50) {
-          mBat.textContent = '↑ ' + fmtWFull(Math.abs(bw));   // discharging
-        } else {
-          mBat.textContent = '≈ 0';
-        }
+        if (bw > 50)       mBat.textContent = '↓ ' + fmtWFull(bw);
+        else if (bw < -50) mBat.textContent = '↑ ' + fmtWFull(Math.abs(bw));
+        else               mBat.textContent = '≈ 0';
+        set('mSoc', soc.toFixed(0) + '%');
 
         // EV
         set('mEv', s.evCharging ? fmtWFull(ev) : '–');
 
-        /* SoC bar */
-        const soc = s.batSoc ?? 0;
-        set('socVal', soc.toFixed(0) + '%');
-        $id('socFill').style.width = soc + '%';
-
-        /* Plan status */
+        // Plan
         const planEl = $id('planStatus');
         if (planEl && s.plan) {
-          if (s.plan.prio1Feasible) {
-            planEl.textContent = '✓ Plan haalbaar';
-            planEl.className   = 'plan-ok';
-          } else {
-            planEl.textContent = '⚠ Plan krap';
-            planEl.className   = 'plan-warn';
-          }
+          if (s.plan.prio1Feasible) { planEl.textContent = '✓ Plan morgen haalbaar'; planEl.className = 'plan-ok'; }
+          else                      { planEl.textContent = '⚠ Plan morgen krap';     planEl.className = 'plan-warn'; }
         }
 
-        /* Update time */
         set('updAt', timeLbl());
 
-        /* Patch live into actuals and redraw */
         patchLive(s);
         updateChart();
-      } catch (e) {
-        console.error('[EMS chart] getState failed', e);
-      }
+      } catch(e) { console.error('[EMS chart] getState', e); }
     }
 
-    /* ── Homey ready ── */
     async function onHomeyReady(Homey) {
       Homey.ready();
       await refreshActuals();
       initChart();
       await refreshState();
-
-      // Poll state every minute, actuals every 5 minutes
       setInterval(refreshState, POLL_MS);
-      setInterval(async () => {
-        await refreshActuals();
-        updateChart();
-      }, 5 * POLL_MS);
+      setInterval(async () => { await refreshActuals(); updateChart(); }, 5 * POLL_MS);
     }
   </script>
 </body>
