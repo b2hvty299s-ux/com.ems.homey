@@ -281,7 +281,7 @@
     }
 
     function onHomeyReady(Homey) {
-      Homey.ready();
+      Homey.ready({ height: 500 });
       refresh();
       setInterval(refresh, 60_000);
     }

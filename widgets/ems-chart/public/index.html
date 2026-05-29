@@ -241,7 +241,7 @@
     }
 
     async function onHomeyReady(Homey) {
-      Homey.ready();
+      Homey.ready({ height: 420 });
       await refreshActuals();
       initChart();
       await refreshState();
