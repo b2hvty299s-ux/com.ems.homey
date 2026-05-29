@@ -498,29 +498,28 @@ class TeslaEvAdapter {
       switch (command) {
         case 'start_charging':
           this._lastCommandTime = now;
+          // Primary: fire flow trigger — user wires "EMS wants to start/stop EV charging"
+          // to Tesla app action (same pattern as set_charge_amps / ev_set_charge_current).
+          this.app.homey.emit('ems:setEvChargingOn', true);
+          sent = true;
+          // Fallback: also try direct capability in case user hasn't set up the flow
           if (caps.includes('charging_on')) {
-            await device.setCapabilityValue('charging_on', true);
-            sent = true;
-          } else if (caps.includes('charging_start')) {
-            await device.setCapabilityValue('charging_start', true);
-            sent = true;
+            await device.setCapabilityValue('charging_on', true).catch(() => {});
           } else if (caps.includes('onoff')) {
-            await device.setCapabilityValue('onoff', true);
-            sent = true;
+            await device.setCapabilityValue('onoff', true).catch(() => {});
           }
           break;
 
         case 'stop_charging':
           this._lastCommandTime = now;
+          // Primary: fire flow trigger — user wires to Tesla stop-charging action
+          this.app.homey.emit('ems:setEvChargingOn', false);
+          sent = true;
+          // Fallback: also try direct capability
           if (caps.includes('charging_on')) {
-            await device.setCapabilityValue('charging_on', false);
-            sent = true;
-          } else if (caps.includes('charging_stop')) {
-            await device.setCapabilityValue('charging_stop', true);
-            sent = true;
+            await device.setCapabilityValue('charging_on', false).catch(() => {});
           } else if (caps.includes('onoff')) {
-            await device.setCapabilityValue('onoff', false);
-            sent = true;
+            await device.setCapabilityValue('onoff', false).catch(() => {});
           }
           break;
 
