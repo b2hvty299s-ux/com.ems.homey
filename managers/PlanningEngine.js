@@ -47,6 +47,13 @@ class PlanningEngine {
 
     this._scheduleNextRecalc();
     this.app.log('[Planning] Engine ready — recalc at 04:00(today), 12:00(today), 19:00(tomorrow), 22:00(tomorrow)');
+
+    // Always recalculate on startup — determines target based on current time
+    const startupTarget = new Date().getHours() >= 19 ? 'tomorrow' : 'today';
+    this.app.log(`[Planning] Startup recalc (target: ${startupTarget})...`);
+    this.recalculate('startup', startupTarget).catch(e =>
+      this.app.error('[Planning] Startup recalc error:', e)
+    );
   }
 
   destroy() {
@@ -364,7 +371,7 @@ class PlanningEngine {
 
   // ─── Scheduling ───────────────────────────────────────────────────────────
 
-  _scheduleNextRecalc() {
+_scheduleNextRecalc() {
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
