@@ -131,7 +131,29 @@
         });
       });
 
-      // 5. Change handlers
+      // 5. Diagnostics knop
+      var btnW = document.getElementById('btnTestWeather');
+      if (btnW) {
+        btnW.addEventListener('click', function() {
+          var pre = document.getElementById('weatherResult');
+          btnW.textContent = '⏳ Ophalen...';
+          btnW.disabled = true;
+          pre.style.display = 'none';
+          Homey.api('GET', '/testWeather', {}).then(function(result) {
+            pre.textContent = JSON.stringify(result, null, 2);
+            pre.style.display = 'block';
+            btnW.textContent = '☁️ Test weersdata ophalen';
+            btnW.disabled = false;
+          }).catch(function(err) {
+            pre.textContent = 'Fout: ' + (err && err.message ? err.message : String(err));
+            pre.style.display = 'block';
+            btnW.textContent = '☁️ Test weersdata ophalen';
+            btnW.disabled = false;
+          });
+        });
+      }
+
+      // 6. Change handlers
       document.querySelectorAll('input, select').forEach(function(el) {
         el.addEventListener('change', function() {
           var isDeviceBool = DEVICE_BOOL_KEYS.indexOf(el.id) !== -1;
@@ -277,26 +299,6 @@
         sel.appendChild(opt);
       }
     }
-
-    // Diagnostics
-    document.getElementById('btnTestWeather').addEventListener('click', function() {
-      var btn = this;
-      var pre = document.getElementById('weatherResult');
-      btn.textContent = '⏳ Ophalen...';
-      btn.disabled = true;
-      pre.style.display = 'none';
-      _Homey.api('GET', '/testWeather', {}).then(function(result) {
-        pre.textContent = JSON.stringify(result, null, 2);
-        pre.style.display = 'block';
-        btn.textContent = '☁️ Test weersdata ophalen';
-        btn.disabled = false;
-      }).catch(function(err) {
-        pre.textContent = 'Fout: ' + err.message;
-        pre.style.display = 'block';
-        btn.textContent = '☁️ Test weersdata ophalen';
-        btn.disabled = false;
-      });
-    });
 
     function showSaved() {
       var el = document.getElementById('saved-msg');
