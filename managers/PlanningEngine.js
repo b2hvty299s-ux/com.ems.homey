@@ -161,9 +161,9 @@ class PlanningEngine {
       const schedule = this._buildHourlySchedule({
         pvHourly, consumptionHourly, prices,
         batAvailKwh, batMaxKwh, batMinKwh,
-        batCapKwh: batCapKwh ?? batCapFromSettings, // fallback if adapter doesn't expose totalCapacityKwh
+        batCapKwh: batCapKwh ?? batCapFromSettings,
         batMaxChargeKw, batMaxDischargeKw,
-        evNeededKwh, evFixedKwhPerHour, trip, evConfig,
+        evNeededKwh, evFixedKwhPerHour, evMinPowerW, trip, evConfig,
         surplusAfterBat,
       });
 
@@ -222,7 +222,7 @@ class PlanningEngine {
 
   _buildHourlySchedule({ pvHourly, consumptionHourly, prices, batAvailKwh, batMaxKwh,
                           batMinKwh, batCapKwh, batMaxChargeKw, batMaxDischargeKw,
-                          evNeededKwh, evFixedKwhPerHour,
+                          evNeededKwh, evFixedKwhPerHour, evMinPowerW,
                           trip, evConfig, surplusAfterBat }) {
     const schedule = [];
     let batKwh     = batAvailKwh;
