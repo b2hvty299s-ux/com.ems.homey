@@ -153,6 +153,26 @@
         });
       }
 
+      var btnR = document.getElementById('btnForceRecalc');
+      if (btnR) {
+        btnR.addEventListener('click', function() {
+          var pre = document.getElementById('weatherResult');
+          btnR.textContent = '⏳ Berekenen...';
+          btnR.disabled = true;
+          Homey.api('GET', '/forceRecalculate', {}).then(function(result) {
+            pre.textContent = JSON.stringify(result, null, 2);
+            pre.style.display = 'block';
+            btnR.textContent = '🔄 Herbereken plan nu';
+            btnR.disabled = false;
+          }).catch(function(err) {
+            pre.textContent = 'Fout: ' + (err && err.message ? err.message : String(err));
+            pre.style.display = 'block';
+            btnR.textContent = '🔄 Herbereken plan nu';
+            btnR.disabled = false;
+          });
+        });
+      }
+
       // 6. Change handlers
       document.querySelectorAll('input, select').forEach(function(el) {
         el.addEventListener('change', function() {
@@ -752,9 +772,14 @@
   <div class="card">
     <div class="card-title"><span class="icon">🔬</span> Diagnostics</div>
     <p class="hint">Test de verbinding met Open-Meteo en bekijk de ruwe weersdata voor vandaag en morgen.</p>
-    <button id="btnTestWeather" style="padding:9px 16px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:10px">
-      ☁️ Test weersdata ophalen
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button id="btnTestWeather" style="padding:9px 16px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">
+        ☁️ Test weersdata
+      </button>
+      <button id="btnForceRecalc" style="padding:9px 16px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">
+        🔄 Herbereken plan nu
+      </button>
+    </div>
     <pre id="weatherResult" style="display:none;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;font-size:11px;overflow-x:auto;white-space:pre-wrap;line-height:1.5"></pre>
   </div>
 

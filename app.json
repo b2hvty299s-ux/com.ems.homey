@@ -1,6 +1,6 @@
 {
   "id": "com.ems.homey",
-  "version": "1.4.7",
+  "version": "1.4.8",
   "compatibility": ">=12.1.0",
   "sdk": 3,
   "brandColor": "#0d1f3c",
@@ -827,6 +827,10 @@
     "testWeather": {
       "method": "GET",
       "path": "/testWeather"
+    },
+    "forceRecalculate": {
+      "method": "GET",
+      "path": "/forceRecalculate"
     }
   }
 }

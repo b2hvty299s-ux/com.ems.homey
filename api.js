@@ -133,6 +133,33 @@ module.exports = {
     }
   },
 
+  async forceRecalculate({ homey }) {
+    try {
+      // Clear weather cache so fresh data is fetched
+      if (homey.app.ems?.openMeteo) homey.app.ems.openMeteo._cache = null;
+
+      const target = new Date().getHours() >= 19 ? 'tomorrow' : 'today';
+      await homey.app.ems.planningEngine.recalculate('manual_test', target);
+      const plan = homey.app.ems.planningEngine.getCurrentPlan();
+
+      if (!plan) return { ok: false, error: 'Plan is null na herberekening' };
+
+      return {
+        ok:       true,
+        target,
+        date:     plan.date,
+        summary:  plan.summary,
+        pvSample: plan.schedule?.slice(6, 20).map(s => ({
+          h: s.hour,
+          pvKwh: s.pvKwh,
+          ev: s.evCharging,
+        })),
+      };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  },
+
   async testWallConnector({ homey, body }) {
     const { ip } = body;
     try {
