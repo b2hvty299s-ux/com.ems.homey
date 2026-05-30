@@ -285,7 +285,7 @@
       btn.textContent = '⏳ Ophalen...';
       btn.disabled = true;
       pre.style.display = 'none';
-      Homey.api('GET', '/testWeather', {}).then(function(result) {
+      _Homey.api('GET', '/testWeather', {}).then(function(result) {
         pre.textContent = JSON.stringify(result, null, 2);
         pre.style.display = 'block';
         btn.textContent = '☁️ Test weersdata ophalen';
