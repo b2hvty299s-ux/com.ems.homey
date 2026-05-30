@@ -81,28 +81,55 @@ module.exports = {
   },
 
   async testWeather({ homey }) {
-    try {
-      // Force fresh fetch (bypass cache)
-      homey.app.ems.openMeteo._cache = null;
-      const forecast = await homey.app.ems.openMeteo.getForecast();
+    // Direct fetch — bypasses cache AND fallback so we see the real error/response
+    const lat = homey.app.ems?.openMeteo?.lat ?? homey.geolocation.getLatitude()  ?? 52.3;
+    const lon = homey.app.ems?.openMeteo?.lon ?? homey.geolocation.getLongitude() ?? 4.9;
 
-      const summarize = (day) => ({
-        dayMax:       day.dayMax,
-        avgCloudPct:  day.avgCloudPct,
-        radiationSum: day.radiationSum,
-        peakRadW:     Math.max(...day.hourly.map(h => h.radiationW ?? 0)),
-        totalRadKwh:  +(day.hourly.reduce((s, h) => s + (h.radiationW ?? 0), 0) / 1000).toFixed(2),
-        solarHours:   day.hourly.filter(h => (h.radiationW ?? 0) > 50).map(h => `${String(h.hour).padStart(2,'0')}:00 ${h.radiationW.toFixed(0)}W/m²`),
-      });
+    const params = new URLSearchParams({
+      latitude:  lat,
+      longitude: lon,
+      hourly:    'shortwave_radiation,temperature_2m,cloud_cover',
+      daily:     'temperature_2m_max,shortwave_radiation_sum',
+      forecast_days: 3,
+      timezone:  'Europe/Amsterdam',
+    });
+    const url = `https://api.open-meteo.com/v1/forecast?${params}`;
+
+    try {
+      const res  = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      const text = await res.text();
+      if (!res.ok) return { ok: false, status: res.status, body: text.slice(0, 300) };
+
+      const data  = JSON.parse(text);
+      const times = data.hourly?.time ?? [];
+
+      // Summarize per day
+      const summarize = (dateStr) => {
+        const hours = times
+          .map((t, i) => ({ t, rad: data.hourly.shortwave_radiation[i] }))
+          .filter(x => x.t.startsWith(dateStr) && x.rad > 0)
+          .map(x => `${x.t.slice(11,16)}: ${x.rad.toFixed(0)} W/m²`);
+        const allRad = times
+          .map((t, i) => t.startsWith(dateStr) ? (data.hourly.shortwave_radiation[i] ?? 0) : 0);
+        return {
+          totalRadKwh: +(allRad.reduce((s, v) => s + v, 0) / 1000).toFixed(2),
+          solarHours:  hours,
+        };
+      };
+
+      const today    = new Date().toISOString().slice(0, 10);
+      const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })();
 
       return {
         ok:       true,
-        today:    summarize(forecast.today),
-        tomorrow: summarize(forecast.tomorrow),
-        tonight:  forecast.tonight,
+        location: { lat, lon },
+        url:      url.slice(0, 120) + '...',
+        daily:    data.daily,
+        today:    summarize(today),
+        tomorrow: summarize(tomorrow),
       };
     } catch (e) {
-      return { ok: false, error: e.message };
+      return { ok: false, error: e.message, url };
     }
   },
 
