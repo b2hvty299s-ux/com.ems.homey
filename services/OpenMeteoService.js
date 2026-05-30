@@ -145,15 +145,27 @@ class OpenMeteoService {
     const hourly = data.hourly;
     const daily  = data.daily;
 
+    if (!hourly || !hourly.time || !Array.isArray(hourly.time)) {
+      this.app.error('[OpenMeteo] Invalid response structure:', JSON.stringify(data).slice(0, 200));
+      throw new Error('Invalid Open-Meteo response — missing hourly.time');
+    }
+
+    const rad = hourly.shortwave_radiation;
+    if (!rad) {
+      this.app.error('[OpenMeteo] Missing shortwave_radiation in response');
+      throw new Error('Missing shortwave_radiation');
+    }
+
     // Map hourly arrays to objects
+    // Use string slicing for hour (avoids timezone issues with new Date())
     const hourlyData = hourly.time.map((t, i) => ({
       time:           t,
-      hour:           new Date(t).getHours(),
+      hour:           parseInt(t.slice(11, 13), 10),  // "2026-05-30T14:00" → 14
       date:           t.substring(0, 10),
-      tempC:          hourly.temperature_2m[i],
-      cloudCoverPct:  hourly.cloud_cover[i],
-      radiationW:     hourly.shortwave_radiation[i],
-      precipProb:     hourly.precipitation_probability[i],
+      tempC:          hourly.temperature_2m?.[i] ?? 12,
+      cloudCoverPct:  hourly.cloud_cover?.[i]      ?? 50,
+      radiationW:     rad[i]                        ?? 0,
+      precipProb:     hourly.precipitation_probability?.[i] ?? 20,
     }));
 
     const todayStr    = this._todayStr();
