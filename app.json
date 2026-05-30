@@ -34,8 +34,7 @@
     "energy"
   ],
   "permissions": [
-    "homey:manager:api",
-    "homey:manager:notifications"
+    "homey:manager:api"
   ],
   "author": {
     "name": "Menno",
