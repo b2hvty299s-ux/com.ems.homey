@@ -652,9 +652,7 @@
                   <select id="ev_night_end"></select>
                 </div>
               </div>
-              <label>Min thuisaccu SoC voor nachtladen (%)</label>
-              <p class="hint">EV laadt 's nachts alleen als de thuisaccu boven dit % zit. Stel 0 in om altijd toe te staan.</p>
-              <input type="number" id="ev_bat_night_min_soc" value="0" min="0" max="100" />
+              <p class="hint">De EMS berekent automatisch hoeveel accu-reserve nodig is op basis van het gemeten nacht- en ochtendverbruik (rolling 3-daags gemiddelde). Een vaste minimale SoC is niet meer nodig.</p>
 
               <label style="margin-top:10px">Auto staat thuis op</label>
               <p class="hint">De avond vóór een thuisdag slaat het EMS nachtladen over — de auto laadt de volgende dag op zonnestroom.</p>
