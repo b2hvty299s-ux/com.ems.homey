@@ -28,6 +28,8 @@ class ThermostatAdapter {
     this._userOffMap = {};        // id → true if user manually turned off
     this._lastSetBy  = {};        // id → 'ems' | 'user'
     this._activeOffset = 0;       // current applied offset (+ or -)
+    this._lastOverrideCheck = 0;  // timestamp of last _checkUserOverrides call
+    this._overrideCheckIntervalMs = 10 * 60 * 1000; // max 1× per 10 min — Daikin rate limit
   }
 
   init(config) {
@@ -87,7 +89,13 @@ class ThermostatAdapter {
   async applyOffset(energyState, gridPhases = null) {
     if (this.thermostats.length === 0) return;
 
-    await this._checkUserOverrides();
+    // Rate-limit: check user overrides at most once per 10 minutes
+    // Daikin cloud API has strict rate limits — polling every 60s causes "Too Many Requests"
+    const now = Date.now();
+    if (now - this._lastOverrideCheck >= this._overrideCheckIntervalMs) {
+      this._lastOverrideCheck = now;
+      await this._checkUserOverrides();
+    }
 
     const THRESHOLD = this.homey.settings.get('surplus_threshold') ?? 300;
 
@@ -159,10 +167,15 @@ class ThermostatAdapter {
   }
 
   async _setTemp(t, temp, setBy = 'ems') {
+    // Skip if temperature unchanged — avoids unnecessary cloud calls (Daikin rate limit)
+    if (t._lastSentTemp === temp && setBy === 'ems') {
+      return;
+    }
     try {
       const device = await this.app.getDevice(t.id);
       this._lastSetBy[t.id] = setBy;
       await device.setCapabilityValue('target_temperature', temp);
+      t._lastSentTemp = temp;
       this.app.log(`[Thermostat] ${t.name}: setpoint → ${temp}°C (${setBy}, mode: ${this._mode})`);
     } catch (err) {
       this.app.error(`[Thermostat] setTemp error for ${t.name}:`, err.message);
