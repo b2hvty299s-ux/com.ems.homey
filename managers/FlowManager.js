@@ -16,7 +16,7 @@ class FlowManager {
     const notify = (msg) => this.app.notifications?.send(msg);
 
     this.homey.on('ems:modeChanged',          mode    => trigger('ems_mode_changed').trigger({ mode }));
-    this.homey.on('ems:prio1NotFeasible',     ()      => { trigger('prio1_not_feasible').trigger(); notify('⚠️ EMS: Dagplan morgen krap — onvoldoende zon voor alle prioriteiten'); });
+    this.homey.on('ems:prio1NotFeasible',     ()      => { trigger('prio1_not_feasible').trigger(); notify('⚠️ EMS: Dagplan krap — onvoldoende zon voor alle prioriteiten'); });
     this.homey.on('ems:evReadyForDeparture',  data    => { trigger('ev_ready_for_departure').trigger(data); notify(`✅ EV klaar voor vertrek — ${data.soc?.toFixed(0) ?? '?'}% geladen`); });
     this.homey.on('ems:batteryBelowMinimum',  data    => { trigger('battery_below_minimum').trigger(data); notify(`🔋 Thuisaccu onder minimum — ${data.soc?.toFixed(0) ?? '?'}% SoC`); });
     this.homey.on('ems:dumpLoadActivated',    ()      => trigger('dump_load_activated').trigger());

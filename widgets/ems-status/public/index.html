@@ -88,7 +88,7 @@
 
   <div class="header">
     <div>
-      <div class="title">☀️ EMS Morgen</div>
+      <div class="title" id="widgetTitle">☀️ EMS Morgen</div>
       <div class="subdate" id="planDate">–</div>
     </div>
     <span id="feasBadge" class="badge-none">–</span>
@@ -271,6 +271,10 @@
         }
 
         const sum = plan.summary;
+        // Dynamische titel: Vandaag / Morgen
+        const isToday = plan.target === 'today' ||
+          plan.date === new Date().toISOString().slice(0,10);
+        set('widgetTitle', isToday ? '⚡ EMS Vandaag' : '☀️ EMS Morgen');
         set('planDate', fmtDate(plan.date));
         set('calcAt',   fmtTime(plan.calculatedAt));
 
