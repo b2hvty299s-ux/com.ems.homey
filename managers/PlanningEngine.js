@@ -161,15 +161,24 @@ class PlanningEngine {
           }
         }
 
-        const currentSoc = await this._getEvSoc();
-        if (trip) {
-          // Trip planned: charge to trip's target SoC
-          evNeededKwh = Math.max(0, evConfig.capacityKwh * (trip.targetSoc - currentSoc) / 100);
+        // Check if EV will be home on the target date
+        const DAY_KEYS   = ['sun','mon','tue','wed','thu','fri','sat'];
+        const targetDow  = targetDate.getDay();
+        const evHomeKey  = `ev_home_${DAY_KEYS[targetDow]}`;
+        // Default: home on weekends (sat=6, sun=0)
+        const evIsHome   = this.homey.settings.get(evHomeKey)
+          ?? (targetDow === 0 || targetDow === 6);
+
+        if (!evIsHome) {
+          this.app.log(`[Planning] EV niet thuis op ${DAY_KEYS[targetDow]} — geen EV-laden ingepland`);
         } else {
-          // No trip: still plan to top up to default SoC from solar surplus.
-          // This ensures the plan shows EV charging during sunny hours even without a trip.
-          const defaultSoc = this.homey.settings.get('ev_default_soc') ?? 80;
-          evNeededKwh = Math.max(0, evConfig.capacityKwh * (defaultSoc - currentSoc) / 100);
+          const currentSoc = await this._getEvSoc();
+          if (trip) {
+            evNeededKwh = Math.max(0, evConfig.capacityKwh * (trip.targetSoc - currentSoc) / 100);
+          } else {
+            const defaultSoc = this.homey.settings.get('ev_default_soc') ?? 80;
+            evNeededKwh = Math.max(0, evConfig.capacityKwh * (defaultSoc - currentSoc) / 100);
+          }
         }
       }
 
